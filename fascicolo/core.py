@@ -454,12 +454,21 @@ class Modulo:
         return self.map.get("titolo") or self.pdf.stem.replace("_", " ")
 
     @property
+    def tipo(self):
+        """'acroform' (moduli 2026 e ISTAT), 'xfa' (moduli dinamici 2022), 'statico' (solo da stampare)."""
+        return self.map.get("tipo", "acroform")
+
+    @property
     def mappato(self):
-        return bool(self.map.get("campi"))
+        return bool(self.map.get("campi")) or self.tipo in ("xfa", "statico")
 
     @property
     def gruppo(self):
         return self.map.get("gruppo", "")
+
+    @property
+    def edizione(self):
+        return self.map.get("edizione", "Altri moduli")
 
 
 def elenco_moduli(archivio=None):
@@ -470,8 +479,8 @@ def elenco_moduli(archivio=None):
             if m.get("modulo"):
                 mapp[m["modulo"]] = (m, f)
     out = []
-    for pdf in sorted(MODULI_DIR.glob("*.pdf")):
-        m, f = mapp.get(pdf.name, (None, None))
+    for pdf in sorted(MODULI_DIR.rglob("*.pdf")):
+        m, f = mapp.get(pdf.relative_to(MODULI_DIR).as_posix(), (None, None))
         out.append(Modulo(pdf, m, f))
     if archivio:  # moduli aggiunti dall'utente
         extra = archivio.impostazioni / "moduli"
@@ -638,14 +647,27 @@ def genera(pratica, modulo):
     """Compila il modulo. Se esiste già una versione compilata, i campi che il programma
     non gestisce (scelte tecniche, spunte fatte a mano nel PDF…) vengono conservati."""
     out = pratica.cartella_modulo(modulo.id) / f"{modulo.id}.pdf"
+    out.parent.mkdir(parents=True, exist_ok=True)
     conserva = None
-    if out.exists():
+    if out.exists() and modulo.tipo == "acroform":
         regole = modulo.map.get("campi", {})
         try:
             conserva = {k: v for k, v in leggi_valori(out).items() if k not in regole}
         except Exception:
             conserva = None
     _archivia_precedente(pratica, modulo, out)
+    if modulo.tipo == "xfa":
+        from . import xfa
+        # se il modulo c'è già scrivo nel PDF esistente: restano i campi compilati a mano in Acrobat
+        res = xfa.scrivi(out if out.exists() else modulo.pdf, out, pratica)
+        pratica.registra_modulo(modulo.id, out)
+        pratica.salva()
+        return out, res
+    if modulo.tipo == "statico":
+        shutil.copyfile(modulo.pdf, out)
+        pratica.registra_modulo(modulo.id, out)
+        pratica.salva()
+        return out, (0, 0)
     res = compila(pratica, modulo, out, conserva)
     pratica.registra_modulo(modulo.id, out)
     pratica.salva()
@@ -705,6 +727,29 @@ def firma_campi(pdf):
         return doc.page_count, {w.field_name for p in doc for w in p.widgets()}
     finally:
         doc.close()
+
+
+def riconosci_xfa(pdf, moduli):
+    """Per un modulo del portale (XFA) trova il modello 2022 corrispondente confrontando i campi."""
+    from . import xfa
+    try:
+        campi = xfa.campi_legati(pdf)
+    except Exception:
+        return None
+    if not campi:
+        return None
+    migliore, punteggio = None, 0.0
+    for m in moduli:
+        if m.tipo != "xfa":
+            continue
+        try:
+            nm = xfa.campi_legati(m.pdf)
+        except Exception:
+            continue
+        s = len(campi & nm) / max(1, len(campi | nm))
+        if s > punteggio:
+            migliore, punteggio = m, s
+    return migliore if punteggio >= 0.9 else None
 
 
 def riconosci_modulo(pdf, moduli):

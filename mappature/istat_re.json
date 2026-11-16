@@ -75,5 +75,6 @@
   "Costo_intervento": {
    "k": "intervento.costo"
   }
- }
+ },
+ "edizione": "ISTAT / ISPAT"
 }

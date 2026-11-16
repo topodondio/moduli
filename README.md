@@ -64,6 +64,14 @@ salvati in altre cartelle non vengono toccati). Le stesse voci sono nel menu del
 **Comuni** (barra a sinistra): elenco dei comuni con la PEC, usata nell'informativa privacy.
 
 ## Moduli
+Quando premi **Compila un modulo** i moduli sono divisi in tre gruppi principali:
+- **Moduli 2026**: la modulistica provinciale nuova (PDF compilabili).
+- **Moduli 2022**: i moduli dinamici del portale (Adobe LiveCycle/XFA), cartella `moduli/2022`.
+  Fascicolo scrive i dati della pratica dentro il modulo e li rilegge quando lo salvi; vanno
+  aperti e completati con **Adobe Acrobat o Acrobat Reader** (gli altri lettori PDF mostrano
+  solo "Please wait…"). Se ricompili un modulo 2022 già fatto, i campi compilati a mano restano.
+- **ISTAT / ISPAT**: i modelli statistici RE e NRE.
+
 Tutti i 17 moduli provinciali e i due modelli ISTAT (RE e NRE) sono già collegati ai dati della
 pratica. Sono collegati: dichiarante (persona o società), immobile e dati catastali, titolarità,
 progettista/tecnico, direttore lavori, impresa, diritti e bollo, sicurezza, date e riferimenti

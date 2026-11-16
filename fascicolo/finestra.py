@@ -216,51 +216,81 @@ class SchedaDati(QWidget):
 
 # =========================================================================== scheda moduli
 
+ORDINE_EDIZIONI = ["2026", "2022", "ISTAT / ISPAT"]
+
+
 class SceltaModulo(QDialog):
-    """Elenco dei moduli disponibili, con ricerca."""
+    """Moduli disponibili raggruppati: edizione (2026, 2022, ISTAT/ISPAT) › gruppo › modulo."""
 
     def __init__(self, moduli, gia, parent=None):
         super().__init__(parent)
+        from PySide6.QtWidgets import QTreeWidget, QTreeWidgetItem
         self.setWindowTitle("Scegli il modulo da compilare")
-        self.resize(560, 560)
+        self.resize(600, 620)
         lay = QVBoxLayout(self)
         self.cerca = QLineEdit()
         self.cerca.setPlaceholderText("Cerca un modulo…")
         lay.addWidget(self.cerca)
-        self.lista = QListWidget()
-        gruppo = None
-        for m in moduli:
-            if m.gruppo != gruppo:
-                gruppo = m.gruppo
-                h = QListWidgetItem(gruppo or "Altro")
-                h.setFlags(Qt.NoItemFlags)
-                f = h.font()
-                f.setBold(True)
-                h.setFont(f)
-                self.lista.addItem(h)
-            it = QListWidgetItem(("    " + m.titolo) + ("   ✓ già nella pratica" if m.id in gia else ""))
-            it.setData(Qt.UserRole, m.id)
-            self.lista.addItem(it)
-        self.lista.itemDoubleClicked.connect(lambda *_: self.accept())
+        self.albero = QTreeWidget()
+        self.albero.setHeaderHidden(True)
+        self.albero.setObjectName("alberoModuli")
+        edizioni = sorted({m.edizione for m in moduli},
+                          key=lambda e: (ORDINE_EDIZIONI.index(e) if e in ORDINE_EDIZIONI else 99, e))
+        for ed in edizioni:
+            nodo_ed = QTreeWidgetItem([f"Moduli {ed}" if ed[:1].isdigit() else ed])
+            f = nodo_ed.font(0)
+            f.setBold(True)
+            f.setPointSize(f.pointSize() + 1)
+            nodo_ed.setFont(0, f)
+            nodo_ed.setFlags(Qt.ItemIsEnabled)
+            self.albero.addTopLevelItem(nodo_ed)
+            del_ed = sorted([m for m in moduli if m.edizione == ed], key=lambda m: m.map.get("ordine", 500))
+            gruppi = []
+            for m in del_ed:
+                if m.gruppo not in gruppi:
+                    gruppi.append(m.gruppo)
+            for g in gruppi:
+                padre = nodo_ed
+                if len(gruppi) > 1 or g:
+                    padre = QTreeWidgetItem([g or "Altro"])
+                    padre.setFlags(Qt.ItemIsEnabled)
+                    f2 = padre.font(0)
+                    f2.setBold(True)
+                    padre.setFont(0, f2)
+                    nodo_ed.addChild(padre)
+                for m in del_ed:
+                    if m.gruppo == g:
+                        it = QTreeWidgetItem([m.titolo + ("   ✓ già nella pratica" if m.id in gia else "")])
+                        it.setData(0, Qt.UserRole, m.id)
+                        it.setToolTip(0, m.pdf.name)
+                        padre.addChild(it)
+        self.albero.expandAll()
+        self.albero.itemDoubleClicked.connect(lambda it, _c: it.data(0, Qt.UserRole) and self.accept())
         self.cerca.textChanged.connect(self._filtra)
-        lay.addWidget(self.lista)
+        lay.addWidget(self.albero)
         box = QHBoxLayout()
         box.addStretch()
-        b = bottone("Compila", self.accept, True)
-        box.addWidget(b)
+        box.addWidget(bottone("Compila", self.accept, True))
         box.addWidget(bottone("Annulla", self.reject))
         lay.addLayout(box)
 
     def _filtra(self, t):
         t = t.lower()
-        for i in range(self.lista.count()):
-            it = self.lista.item(i)
-            if it.data(Qt.UserRole):
-                it.setHidden(bool(t) and t not in it.text().lower())
+
+        def visita(it):
+            vis = False
+            for i in range(it.childCount()):
+                vis = visita(it.child(i)) or vis
+            if it.data(0, Qt.UserRole):
+                vis = not t or t in it.text(0).lower()
+            it.setHidden(not vis)
+            return vis
+        for i in range(self.albero.topLevelItemCount()):
+            visita(self.albero.topLevelItem(i))
 
     def scelto(self):
-        it = self.lista.currentItem()
-        return it.data(Qt.UserRole) if it else None
+        it = self.albero.currentItem()
+        return it.data(0, Qt.UserRole) if it else None
 
 
 class SchedaModuli(QWidget):
@@ -302,7 +332,9 @@ class SchedaModuli(QWidget):
         if mod_id.startswith("xfa:"):
             return mod_id[4:] + "  (modulo del portale)"
         m = self.f._modulo_per_id(mod_id)
-        return m.titolo if m else mod_id
+        if not m:
+            return mod_id
+        return f"{m.titolo}  ·  {m.edizione}"
 
     def carica(self, pratica):
         self.pratica = pratica
@@ -864,6 +896,12 @@ class Finestra(QMainWindow):
                                         "Questi dati sono diversi da quelli della pratica: scegli quali salvare.")
                     continue
                 m = self._modulo_per_id(mod_id)
+                if m and m.tipo == "xfa":
+                    self._rivedi_xfa(f, f"Hai modificato e salvato <b>{m.titolo}</b> (moduli 2022). "
+                                        "Questi dati sono diversi da quelli della pratica: scegli quali salvare.")
+                    continue
+                if m and m.tipo == "statico":
+                    continue
                 if m and m.mappato:
                     self._rivedi_dati(m, f, f"Hai modificato e salvato il PDF <b>{m.titolo}</b>. "
                                             "Questi dati sono diversi da quelli della pratica: scegli quali salvare.")
@@ -883,6 +921,18 @@ class Finestra(QMainWindow):
             return
         m, _punteggio = core.riconosci_modulo(pdf, moduli)
         if not m and n_campi == 0 and xfa.leggi_datasets(pdf):
+            m22 = core.riconosci_xfa(pdf, moduli)
+            if m22:
+                self._in_controllo = True
+                try:
+                    out = core.importa_modulo(self.pratica, m22, pdf)
+                finally:
+                    self._in_controllo = False
+                self._sorveglia()
+                self._rivedi_xfa(out, f"Ho caricato <b>{m22.titolo}</b> (moduli 2022) nella pratica. Questi sono i "
+                                      "dati trovati nel PDF che mancano o sono diversi nella pratica: scegli quali salvare.")
+                self.stato(f"«{pdf.name}» caricato come «{m22.titolo}» (2022)")
+                return
             titolo, _p = xfa.estrai(pdf)
             self._in_controllo = True
             try:

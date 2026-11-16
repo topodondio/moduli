@@ -258,9 +258,345 @@ def estrai(pdf):
     metti("immobile.zona_prg", _t(d, "dichiarazioni_progettista/PRG_vigente/zona"))
     metti("immobile.zona_prg_adottato", _t(d, "dichiarazioni_progettista/PRG_adottato/zona"))
 
+    # campi dei singoli moduli 2022 ----------------------------------------------------------
+    for path, k in SPECIFICI:
+        metti(k, _t(d, path), k in ("immobile.destinazione",) and False)
+    for base, chiave, nomi in TECNICI:
+        n = nomi or _TEC_STD
+        e = d.find("/".join(NS + x for x in base.split("/")))
+        if e is None or not _t(e, n["nome"]):
+            continue
+        tit, cogn, nome = _separa_nome(_t(e, n["nome"]), "")
+        for k, val in ((f"{chiave}.cognome", cogn), (f"{chiave}.nome", nome), (f"{chiave}.titolo", tit),
+                       (f"{chiave}.cf", _t(e, n["cf"])), (f"{chiave}.albo", _t(e, n["albo"])),
+                       (f"{chiave}.albo_n", _t(e, n["albo_n"])), (f"{chiave}.pec", _t(e, n["pec"]))):
+            if val and k not in p:
+                p[k] = val
+    if any(k.startswith("dl.") and k != "dl.uguale" for k in p):
+        p["dl.uguale"] = False
+
     # contributo di costruzione (solo se il portale lo indica chiaramente) ---------------
     if _t(d, "attesta/contrib_costr_interventi_sogg_contrib") == "1":
         p["pdc.contributo"] = "Soggetto - si invierà la ricevuta di pagamento"
     elif _t(d, "attesta/contrib_costr_interventi_nonsogg_contrib") == "1":
         p["pdc.contributo"] = "Non soggetto (nessun aumento del carico urbanistico)"
     return titolo, p
+
+
+# =========================================================================== scrittura
+
+NS_XFA = "http://www.xfa.org/schema/xfa-data/1.0/"
+NS_DD = "http://ns.adobe.com/data-description/"
+NS_SYG = "http://schemas.sygest.it/"
+
+
+def _pacchetti(doc):
+    af = doc.xref_get_key(doc.pdf_catalog(), "AcroForm")
+    if af[0] != "xref":
+        return {}
+    xfa = doc.xref_get_key(int(af[1].split()[0]), "XFA")
+    if xfa[0] != "array":
+        return {}
+    return {n: int(r) for n, r in re.findall(r"\((.*?)\)\s*(\d+) 0 R", xfa[1])}
+
+
+def campi_legati(pdf):
+    """Percorsi (relativi a 'dichiarazione') dei campi che il modulo mostra davvero.
+    Segue i collegamenti del modello XFA, anche quelli relativi al sottomodulo che li contiene."""
+    doc = pymupdf.open(pdf)
+    try:
+        p = _pacchetti(doc)
+        if "template" not in p:
+            return set()
+        t = doc.xref_stream(p["template"])
+    finally:
+        doc.close()
+    try:
+        radice = ET.fromstring(t)
+    except ET.ParseError:
+        testo = t.decode("utf-8", "replace")
+        return {r.replace(".", "/") for r in re.findall(r'ref="\$\.dichiarazione\.([^"\[]+)"', testo)}
+    out = set()
+
+    def locale(e):
+        return e.tag.rsplit("}", 1)[-1]
+
+    def percorso(ctx, ref):
+        ref = re.sub(r"\[[^\]]*\]", "", ref)
+        if ref.startswith("$record."):
+            parti = ref[8:].split(".")
+        elif ref.startswith("$."):
+            parti = ctx + ref[2:].split(".")
+        elif ref.startswith("$"):
+            return None
+        else:
+            parti = ctx + ref.split(".")
+        return [x for x in parti if x]
+
+    def visita(e, ctx):
+        for c in e:
+            tipo = locale(c)
+            if tipo not in ("subform", "subformSet", "field", "exclGroup", "area", "pageSet", "pageArea"):
+                visita(c, ctx) if tipo in ("proto",) else None
+                continue
+            nuovo = ctx
+            for b in c:
+                if locale(b) == "bind" and b.get("match") == "dataRef" and b.get("ref"):
+                    pp = percorso(ctx, b.get("ref"))
+                    if pp is not None:
+                        nuovo = pp
+            if tipo in ("field",) or (tipo == "exclGroup" and nuovo is not ctx):
+                if nuovo is not ctx and nuovo and nuovo[0] == "dichiarazione":
+                    out.add("/".join(nuovo[1:]))
+                if tipo == "field":
+                    continue
+            visita(c, nuovo)
+
+    visita(radice, [])
+    return out
+
+
+def _nome_completo(pratica, sez, titolo=False):
+    parti = [pratica.get(f"{sez}.titolo") if titolo else "", pratica.get(f"{sez}.cognome"), pratica.get(f"{sez}.nome")]
+    return " ".join(str(x).strip() for x in parti if str(x or "").strip())
+
+
+def _via_completa(pratica, sez, pref):
+    return " ".join(str(x).strip() for x in (pratica.get(f"{sez}.{pref}_dug"), pratica.get(f"{sez}.{pref}_via"))
+                    if str(x or "").strip())
+
+
+def valori_da_scrivere(pratica, legati):
+    """{percorso: valore} con i dati della pratica, solo per i campi presenti nel modulo."""
+    g = pratica.get
+    v = {}
+
+    def metti(path, val):
+        if path in legati and val not in (None, ""):
+            v[path] = str(val)
+
+    metti("anagrafica_comune/nome", str(g("pratica.comune") or "").upper())
+    metti("intervento/descrizione", g("pratica.oggetto"))
+    # titolare (se è una società, la persona è il legale rappresentante)
+    r = "titolare/referente"
+    if f"{r}/cognome" in legati:
+        metti(f"{r}/cognome", g("titolare.cognome"))
+        metti(f"{r}/nome", g("titolare.nome"))
+    else:
+        metti(f"{r}/nome", _nome_completo(pratica, "titolare"))
+    metti(f"{r}/codice_fiscale", g("titolare.cf"))
+    metti(f"{r}/dati_nascita/data", g("titolare.data_nascita"))
+    metti(f"{r}/dati_nascita/luogo", g("titolare.nascita_comune"))
+    metti(f"{r}/dati_nascita/provincia", g("titolare.nascita_prov"))
+    metti(f"{r}/dati_nascita/stato", g("titolare.nascita_stato"))
+    metti(f"{r}/residenza/indirizzo", _via_completa(pratica, "titolare", "res"))
+    metti(f"{r}/residenza/numero_civico", g("titolare.res_civico"))
+    metti(f"{r}/residenza/comune", g("titolare.res_comune"))
+    metti(f"{r}/residenza/provincia", g("titolare.res_prov"))
+    metti(f"{r}/residenza/cap", g("titolare.res_cap"))
+    metti(f"{r}/contatti/email", g("titolare.email"))
+    metti(f"{r}/contatti/telefono", g("titolare.tel"))
+    if g("titolare.tipo") == "Società":
+        metti("titolare/in_qualita_di", g("titolare.carica"))
+        metti("titolare/ragione_sociale", g("societa.denominazione"))
+        metti("titolare/partita_iva", g("societa.piva") or g("societa.cf"))
+        metti("titolare/sede_legale/indirizzo", " ".join(x for x in [_via_completa(pratica, "societa", "sede"),
+                                                                    str(g("societa.sede_civico") or "")] if x))
+        metti("titolare/sede_legale/comune", g("societa.sede_comune"))
+        metti("titolare/contatti/emailPEC", g("societa.pec"))
+        metti("titolare/contatti/telefono", g("societa.tel"))
+    else:
+        metti("titolare/in_qualita_di", g("titolare.qualita"))
+    if g("titolarita.tipo") != "Proprietario esclusivo":
+        metti("titolare/titolare_altro_diritto", g("titolarita.desc"))
+    # tecnici
+    for sez, chiave in (("Progettista", "progettista"), ("DirettoreLavori", "dl")):
+        if f"{sez}/Cognome" in legati:
+            metti(f"{sez}/Cognome", g(f"{chiave}.cognome"))
+            metti(f"{sez}/Nome", g(f"{chiave}.nome"))
+        else:
+            metti(f"{sez}/Nome", _nome_completo(pratica, chiave, titolo=True))
+        metti(f"{sez}/Codicefiscale", g(f"{chiave}.cf"))
+        metti(f"{sez}/Nascita/Data", g(f"{chiave}.data_nascita"))
+        metti(f"{sez}/Nascita/Luogo", g(f"{chiave}.nascita_comune"))
+        metti(f"{sez}/Nascita/Provincia", g(f"{chiave}.nascita_prov"))
+        metti(f"{sez}/Residenza/Indirizzo", _via_completa(pratica, chiave, "res"))
+        metti(f"{sez}/Residenza/Ncivico", g(f"{chiave}.res_civico"))
+        metti(f"{sez}/Residenza/Comune", g(f"{chiave}.res_comune"))
+        metti(f"{sez}/Residenza/CAP", g(f"{chiave}.res_cap"))
+        metti(f"{sez}/Residenza/Provincia", g(f"{chiave}.res_prov"))
+        for base in ("sede_operativa", "Recapito"):
+            low = base == "sede_operativa"
+            metti(f"{sez}/{base}/{'indirizzo' if low else 'Indirizzo'}", g(f"{chiave}.studio_via"))
+            metti(f"{sez}/{base}/{'numero_civico' if low else 'Ncivico'}", g(f"{chiave}.studio_civico"))
+            metti(f"{sez}/{base}/{'comune' if low else 'Comune'}", g(f"{chiave}.studio_comune"))
+            metti(f"{sez}/{base}/{'provincia' if low else 'Provincia'}", g(f"{chiave}.studio_prov"))
+            metti(f"{sez}/{base}/{'cap' if low else 'CAP'}", g(f"{chiave}.studio_cap"))
+        metti(f"{sez}/albo_ordine/nome", g(f"{chiave}.albo"))
+        metti(f"{sez}/albo_ordine/numero", g(f"{chiave}.albo_n"))
+        metti(f"{sez}/albo_ordine/provincia", g(f"{chiave}.albo_di"))
+        metti(f"{sez}/Telefono", g(f"{chiave}.tel"))
+        metti(f"{sez}/Cellulare", g(f"{chiave}.cell"))
+        metti(f"{sez}/fax", g(f"{chiave}.fax"))
+        metti(f"{sez}/e-mailPEC", g(f"{chiave}.pec"))
+    if "Progettista/chk_incaricato_dl" in legati:
+        v["Progettista/chk_incaricato_dl"] = "1" if g("progettista.anche_dl") else "0"
+    # impresa
+    metti("impresa_esecutrice/ragione_sociale", g("impresa.denominazione"))
+    metti("impresa_esecutrice/codice_fiscale", g("impresa.cf_piva"))
+    # immobile
+    u = "intervento/localizzazione/ubicazione"
+    metti(f"{u}/indirizzo", g("immobile.via"))
+    metti(f"{u}/numero_civico", g("immobile.civico"))
+    metti(f"{u}/comune", str(g("immobile.comune") or "").upper())
+    metti(f"{u}/provincia", g("immobile.prov"))
+    righe = pratica._particelle()
+    ped = next((x for x in righe if x["ped"]), None)
+    pf = next((x for x in righe if x["pf"]), None)
+    pe = "intervento/localizzazione/particelle_edificabili"
+    if ped:
+        metti(f"{pe}/numero", ped["ped"])
+        metti(f"{pe}/cc", str(ped["cc"]).upper())
+        metti(f"{pe}/pm", ped["pm"])
+        metti(f"{pe}/subalterno", ped["sub"])
+    pfo = "intervento/localizzazione/particelle_fondiarie"
+    if pf:
+        metti(f"{pfo}/numero", pf["pf"])
+        metti(f"{pfo}/cc", str(pf["cc"]).upper())
+    _specifici_scrivi(pratica, legati, metti)
+    return v
+
+
+# campi propri dei singoli moduli 2022: (percorso, chiave della pratica) — valgono in scrittura e lettura
+SPECIFICI = [
+    ("com_inizio_lavori/comunica/inizio_lavori_data", "lavori.data_inizio"),
+    ("com_inizio_lavori/comunica/perm_costruire_n_prot", "lavori.titolo_n"),
+    ("com_inizio_lavori/comunica/perm_costruire_data", "lavori.titolo_data"),
+    ("com_inizio_lavori/dichiara_e_allega/soggetto_indica_data", "lavori.notifica_data"),
+    ("com_inizio_lavori/dichiara_e_allega/soggetto_indica_num", "lavori.notifica_prot"),
+    ("com_inizio_lavori/imprese_lav_auton/ragione_sociale", "impresa.denominazione"),
+    ("com_inizio_lavori/imprese_lav_auton/CF_PIVA", "impresa.cf_piva"),
+    ("com_inizio_lavori/imprese_lav_auton/Indirizzo", "impresa.sede_via"),
+    ("com_inizio_lavori/imprese_lav_auton/Ncivico", "impresa.sede_civico"),
+    ("com_inizio_lavori/imprese_lav_auton/Comune", "impresa.sede_comune"),
+    ("com_inizio_lavori/imprese_lav_auton/CAP", "impresa.sede_cap"),
+    ("com_inizio_lavori/imprese_lav_auton/Telefono", "impresa.tel"),
+    ("com_inizio_lavori/imprese_lav_auton/Fax", "impresa.fax"),
+    ("com_inizio_lavori/imprese_lav_auton/e-mailPEC", "impresa.pec"),
+    ("dich_ultimazione_lavori/comunica/conclusione_lavori_data", "lavori.data_fine"),
+    ("mod_scagi/prot_dich_ult_lav", "lavori.fine_prot"),
+    ("mod_scagi/data_dich_ult_lav", "lavori.fine_prot_data"),
+    ("mod_scagi/elenco_titoli_edilizi/titolo_abilitativo", "lavori.titolo_tipo"),
+    ("mod_scagi/elenco_titoli_edilizi/num_dia", "lavori.titolo_n"),
+    ("mod_scagi/elenco_titoli_edilizi/data_dia", "lavori.titolo_data"),
+    ("elenco_titoli_edilizi/titolo_abilitativo", "lavori.titolo_tipo"),
+    ("elenco_titoli_edilizi/num_dia", "lavori.titolo_n"),
+    ("elenco_titoli_edilizi/data_dia", "lavori.titolo_data"),
+    ("mod_10_ccee/certifica_uso", "immobile.destinazione"),
+]
+# blocchi "immobile" ripetuti dentro i singoli moduli
+UBICAZIONI = ["com_inizio_lavori/intervento", "mod_scagi/elenco_realta_immobiliari"]
+# tecnici dentro i singoli moduli: (percorso, chiave, nomi dei sotto-campi)
+TECNICI = [
+    ("com_inizio_lavori/comunica/direttore_lavori", "dl",
+     {"nome": "direttore_lavori/Nome", "cf": "direttore_lavori/Codicefiscale",
+      "albo": "dir_lavori_albo_ordine/albo_ordine", "albo_n": "dir_lavori_albo_ordine/albo_numero",
+      "albo_di": "dir_lavori_albo_ordine/albo_provincia", "via": "studio_ente_societa/Indirizzo",
+      "civico": "studio_ente_societa/Ncivico", "comune": "studio_ente_societa/Comune",
+      "cap": "studio_ente_societa/CAP", "tel": "studio_ente_societa/Telefono", "fax": "studio_ente_societa/Fax",
+      "pec": "studio_ente_societa/e-mailPEC"}),
+    ("mod_10_ccee/tecnico_abilitato", "progettista", None),
+    ("mod_scagi/tecnico_abilitato", "dl", None),
+]
+_TEC_STD = {"nome": "Nome", "cf": "Codicefiscale", "albo": "albo_ordine/nome", "albo_n": "albo_ordine/numero",
+            "albo_di": "albo_ordine/provincia", "via": "Recapito/Indirizzo", "comune": "Recapito/Comune",
+            "cap": "Recapito/CAP", "tel": "Telefono", "fax": "fax", "pec": "e-mailPEC"}
+
+
+def _specifici_scrivi(pratica, legati, metti):
+    g = pratica.get
+    for path, k in SPECIFICI:
+        metti(path, g(k))
+    righe = pratica._particelle()
+    ped = next((x for x in righe if x["ped"]), None)
+    pf = next((x for x in righe if x["pf"]), None)
+    for base in UBICAZIONI:
+        metti(f"{base}/ubicazione/Comune", g("immobile.comune"))
+        metti(f"{base}/ubicazione/Indirizzo", g("immobile.via"))
+        metti(f"{base}/ubicazione/Ncivico", g("immobile.civico"))
+        metti(f"{base}/ubicazione/Scala", g("immobile.scala"))
+        metti(f"{base}/ubicazione/Piano", g("immobile.piano"))
+        metti(f"{base}/ubicazione/Interno", g("immobile.interno"))
+        if ped:
+            metti(f"{base}/particelle_edificabili/numero", ped["ped"])
+            metti(f"{base}/particelle_edificabili/cc", ped["cc"])
+            metti(f"{base}/particelle_edificabili/pm", ped["pm"])
+            metti(f"{base}/particelle_edificabili/subalterno", ped["sub"])
+        if pf:
+            metti(f"{base}/particelle_fondiarie/numero", pf["pf"])
+            metti(f"{base}/particelle_fondiarie/cc", pf["cc"])
+    if ped:
+        metti("mod_10_ccee/certifica_ped", ped["ped"])
+        metti("mod_10_ccee/certifica_cc", ped["cc"])
+        metti("mod_10_ccee/certifica_pm", ped["pm"])
+        metti("mod_10_ccee/certifica_sub", ped["sub"])
+    metti("mod_10_ccee/certifica_ubi_via", g("immobile.via"))
+    metti("mod_10_ccee/certifica_ubi_civ", g("immobile.civico"))
+    metti("mod_10_ccee/certifica_ubi_loc", g("immobile.comune"))
+    for base, chiave, nomi in TECNICI:
+        n = nomi or _TEC_STD
+        metti(f"{base}/{n['nome']}", _nome_completo(pratica, chiave, titolo=True))
+        for campo, k in (("cf", "cf"), ("albo", "albo"), ("albo_n", "albo_n"), ("albo_di", "albo_di"),
+                         ("comune", "studio_comune"), ("cap", "studio_cap"), ("tel", "tel"), ("fax", "fax"),
+                         ("pec", "pec")):
+            if campo in n:
+                metti(f"{base}/{n[campo]}", g(f"{chiave}.{k}"))
+        if "civico" in n:
+            metti(f"{base}/{n['via']}", g(f"{chiave}.studio_via"))
+            metti(f"{base}/{n['civico']}", g(f"{chiave}.studio_civico"))
+        else:
+            metti(f"{base}/{n['via']}", " ".join(str(x) for x in (g(f"{chiave}.studio_via"), g(f"{chiave}.studio_civico")) if x))
+
+
+def _nodo(radice_dich, path):
+    e = radice_dich
+    for parte in path.split("/"):
+        f = e.find(NS + parte)
+        if f is None:
+            f = ET.SubElement(e, NS + parte)
+        e = f
+    return e
+
+
+def scrivi(modello, uscita, pratica):
+    """Copia il modulo del portale e ci scrive dentro i dati della pratica (pacchetto 'datasets').
+    Ritorna (campi scritti, campi possibili)."""
+    import shutil
+    from pathlib import Path
+    if Path(modello).resolve() != Path(uscita).resolve():
+        shutil.copyfile(modello, uscita)
+    legati = campi_legati(uscita)
+    valori = valori_da_scrivere(pratica, legati)
+    doc = pymupdf.open(uscita)
+    try:
+        p = _pacchetti(doc)
+        xml = doc.xref_stream(p["datasets"])
+        for pref, uri in (("xfa", NS_XFA), ("dd", NS_DD), ("", NS_SYG)):
+            ET.register_namespace(pref, uri)
+        radice = ET.fromstring(xml)
+        dich = radice.find(".//" + NS + "dichiarazione")
+        if dich is None:
+            raise ValueError("struttura dati del modulo non riconosciuta")
+        for path, val in valori.items():
+            _nodo(dich, path).text = val
+        nuovo = ET.tostring(radice, encoding="utf-8")
+        doc.update_stream(p["datasets"], nuovo)
+        # la firma "funzioni estese di Reader" non vale più dopo la modifica: la tolgo,
+        # così Acrobat apre il modulo senza avvisi
+        cat = doc.pdf_catalog()
+        if doc.xref_get_key(cat, "Perms")[0] != "null":
+            doc.xref_set_key(cat, "Perms", "null")
+        doc.saveIncr()
+    finally:
+        doc.close()
+    return len(valori), len(legati)
