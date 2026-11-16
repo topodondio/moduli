@@ -8,9 +8,16 @@ ACCENTO = "#2f7d6d"
 
 TEMA = f"""
 * {{ font-size: 13px; }}
-QMainWindow, QDialog {{ background: #f4f5f2; }}
+QMainWindow, QDialog, QMessageBox {{ background: #f4f5f2; color: #1f2b2e; }}
+QLabel {{ color: #1f2b2e; }}
+QMessageBox QLabel {{ color: #1f2b2e; }}
+QTableWidget, QTreeView, QListWidget {{ color: #1f2b2e; }}
+QGroupBox {{ color: #1f2b2e; }}
+QMenu {{ background: #ffffff; color: #1f2b2e; }}
+QToolTip {{ background: #ffffff; color: #1f2b2e; border: 1px solid #cfd5cf; }}
 #barra {{ background: #1f2b2e; }}
 #barra QLabel {{ color: #e8eeec; }}
+#barra #sottotitoloApp {{ color: #8fa5a0; }}
 #titoloApp {{ font-size: 20px; font-weight: 600; color: #ffffff; padding: 4px 2px; }}
 #sottotitoloApp {{ color: #8fa5a0; font-size: 11px; }}
 #barra QLineEdit {{ background: #2c3a3d; border: 1px solid #3a4b4f; color: #e8eeec; border-radius: 6px; padding: 6px 8px; }}

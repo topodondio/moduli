@@ -488,9 +488,10 @@ def firma_campi(pdf):
 
 
 def riconosci_modulo(pdf, moduli):
-    """Trova a quale modello corrisponde un PDF compilato confrontando i nomi dei campi."""
+    """Trova a quale modello corrisponde un PDF compilato confrontando i nomi dei campi.
+    Ritorna (modulo o None, quota di campi del modello presenti nel PDF)."""
     try:
-        pagine, nomi = firma_campi(pdf)
+        _pagine, nomi = firma_campi(pdf)
     except Exception:
         return None, 0.0
     if not nomi:
@@ -498,15 +499,25 @@ def riconosci_modulo(pdf, moduli):
     migliore, punteggio = None, 0.0
     for m in moduli:
         try:
-            pg, nm = firma_campi(m.pdf)
+            _pg, nm = firma_campi(m.pdf)
         except Exception:
             continue
-        if not nm or pg != pagine:
+        if not nm:
             continue
-        s = len(nomi & nm) / len(nomi | nm)
+        comuni = len(nomi & nm)
+        copertura = comuni / len(nm)          # quanti campi del modello ci sono nel PDF
+        precisione = comuni / len(nomi)       # quanti campi del PDF sono del modello
+        s = copertura if precisione >= 0.6 else 0
         if s > punteggio:
             migliore, punteggio = m, s
-    return (migliore, punteggio) if punteggio >= 0.9 else (None, punteggio)
+    return (migliore, punteggio) if punteggio >= 0.85 else (None, punteggio)
+
+
+def campi_in_comune(pdf, modulo):
+    try:
+        return len(firma_campi(pdf)[1] & firma_campi(modulo.pdf)[1])
+    except Exception:
+        return 0
 
 
 class _Sovrapposizione:
@@ -603,7 +614,7 @@ def differenze(pratica, proposte):
         if isinstance(v, bool) or isinstance(attuale, bool):
             if bool(v) != bool(attuale):
                 out.append((k, attuale, v))
-        elif str(v).strip() != str(attuale or "").strip():
+        elif str(v).strip().lower() != str(attuale or "").strip().lower():
             out.append((k, attuale, v))
     ordine = list(CAMPI.keys())
     return sorted(out, key=lambda x: ordine.index(x[0]) if x[0] in ordine else 9999)
@@ -618,6 +629,22 @@ def importa_modulo(pratica, modulo, pdf):
     pratica.registra_modulo(modulo.id, out, importato=True)
     pratica.salva()
     return out
+
+
+def importa_xfa(pratica, pdf):
+    """Copia nella cartella Moduli un modulo dinamico del portale (XFA). Ritorna (chiave, percorso)."""
+    out = pratica.cartella / "Moduli" / Path(pdf).name
+    if Path(pdf).resolve() != out.resolve():
+        if out.exists():
+            old = pratica.cartella / "Moduli" / "_precedenti"
+            old.mkdir(exist_ok=True)
+            shutil.copy2(out, old / f"{out.stem}_{datetime.now():%Y%m%d-%H%M%S}.pdf")
+        shutil.copy2(pdf, out)
+    chiave = "xfa:" + out.name
+    pratica.registra_modulo(chiave, out, importato=True)
+    pratica.dati["_moduli"][chiave]["xfa"] = True
+    pratica.salva()
+    return chiave, out
 
 
 def moduli_modificati(pratica):

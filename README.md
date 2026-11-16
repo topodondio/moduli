@@ -28,7 +28,10 @@ secondo le regole di ogni comune. Non usa il browser né internet.
    Quando ricompili un modulo, le spunte e i campi che hai scritto a mano nel PDF restano.
 6. **Moduli già compilati**: con *Carica modulo compilato…* (o trascinandolo da *Documenti ›
    Aggiungi file*) un PDF compilato fuori dal programma viene riconosciuto, messo in
-   `Moduli/` e i suoi dati vengono proposti per la pratica.
+   `Moduli/` e i suoi dati vengono proposti per la pratica. Vengono letti anche i **moduli
+   dinamici del portale** (PDF creati con Adobe LiveCycle/XFA, quelli che negli altri
+   programmi mostrano "Please wait…"): i dati si leggono, ma il file si modifica solo con
+   Adobe Acrobat/Reader; se lo correggi e lo salvi, Fascicolo rilegge i dati.
 7. **Consegna**: scegli i file, il programma li copia in `Consegne/<data>` con il testo del
    messaggio e, per PEC/PEO, apre una nuova mail già indirizzata. Firma digitalmente i PDF
    prima di allegarli.

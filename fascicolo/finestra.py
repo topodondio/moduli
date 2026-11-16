@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, Q
                                QFileDialog, QTreeView, QFileSystemModel, QInputDialog, QCheckBox, QPlainTextEdit,
                                QGroupBox, QSplitter, QSizePolicy)
 
-from . import core
+from . import core, xfa
 from .schema import SEZIONI, CAMPI
 from .widgets import Campo
 from .dialoghi import NuovaPratica, DatiMancanti, Comuni, SceltaRubrica, InsegnaModulo, AggiornaDati
@@ -412,6 +412,12 @@ class SchedaDocumenti(QWidget):
             return
         copiati = 0
         for f in files:
+            if f.lower().endswith(".pdf") and xfa.leggi_datasets(f):
+                if QMessageBox.question(self, "Modulo del portale",
+                                        f"«{Path(f).name}» è un modulo compilato del portale.\n"
+                                        "Vuoi caricarlo nella pratica e leggerne i dati?") == QMessageBox.Yes:
+                    self.f.importa_pdf(Path(f))
+                    continue
             if f.lower().endswith(".pdf"):
                 m, _s = core.riconosci_modulo(f, core.elenco_moduli(self.f.archivio))
                 if m and m.mappato and QMessageBox.question(
@@ -672,19 +678,22 @@ class Finestra(QMainWindow):
         return None
 
     def _rivedi_dati(self, modulo, pdf, intro=None):
-        """Legge un PDF, propone i dati diversi e li salva. Ritorna True se ha cambiato la pratica."""
+        """Legge un PDF compilato e propone i dati diversi. Ritorna True se ha cambiato la pratica."""
         try:
             prop = core.estrai_dati(self.pratica, modulo, core.leggi_valori(pdf))
         except Exception as e:  # noqa
             QMessageBox.warning(self, "Lettura PDF", f"Non riesco a leggere «{Path(pdf).name}»:\n{e}")
             return False
+        return self._rivedi_proposte(modulo.titolo, prop, intro, escludi=modulo.id)
+
+    def _rivedi_proposte(self, titolo, prop, intro=None, escludi=None):
         diff = core.differenze(self.pratica, prop)
         if not diff:
-            self.stato(f"«{modulo.titolo}»: nessun dato nuovo da salvare")
+            self.stato(f"«{titolo}»: nessun dato nuovo da salvare")
             return False
         fatti = self.pratica.dati.get("_moduli", {})
-        altri = [m for m in core.elenco_moduli(self.archivio) if m.id in fatti and m.id != modulo.id and m.mappato]
-        d = AggiornaDati(self.pratica, diff, modulo.titolo, intro, len(altri), self)
+        altri = [m for m in core.elenco_moduli(self.archivio) if m.id in fatti and m.id != escludi and m.mappato]
+        d = AggiornaDati(self.pratica, diff, titolo, intro, len(altri), self)
         if not d.exec() or not d.applicati:
             return False
         self.scheda_dati.carica(self.pratica)
@@ -700,8 +709,14 @@ class Finestra(QMainWindow):
                 QMessageBox.warning(self, "Aggiornamento moduli",
                                     "Alcuni moduli non sono stati aggiornati (forse sono aperti in un altro "
                                     "programma):\n\n" + "\n".join(errori))
-        self.stato(f"Salvati {d.applicati} dati da «{modulo.titolo}»")
+        self.stato(f"Salvati {d.applicati} dati da «{titolo}»")
         return True
+
+    def _rivedi_xfa(self, pdf, intro):
+        titolo, prop = xfa.estrai(pdf)
+        if titolo is None:
+            return False
+        return self._rivedi_proposte(f"{titolo} ({Path(pdf).name})", prop, intro)
 
     def controlla_pdf_modificati(self):
         if not self.pratica or self._in_controllo:
@@ -711,6 +726,10 @@ class Finestra(QMainWindow):
             for mod_id, f in core.moduli_modificati(self.pratica):
                 core.segna_letto(self.pratica, mod_id)
                 self.pratica.salva()
+                if mod_id.startswith("xfa:"):
+                    self._rivedi_xfa(f, f"Hai modificato e salvato <b>{f.name}</b> (modulo del portale). "
+                                        "Questi dati sono diversi da quelli della pratica: scegli quali salvare.")
+                    continue
                 m = self._modulo_per_id(mod_id)
                 if m and m.mappato:
                     self._rivedi_dati(m, f, f"Hai modificato e salvato il PDF <b>{m.titolo}</b>. "
@@ -724,14 +743,53 @@ class Finestra(QMainWindow):
 
     def importa_pdf(self, pdf):
         moduli = core.elenco_moduli(self.archivio)
-        m, punteggio = core.riconosci_modulo(pdf, moduli)
-        if not m:
-            if QMessageBox.question(self, "Modulo non riconosciuto",
-                                    f"«{pdf.name}» non corrisponde a nessun modello di Fascicolo "
-                                    "(potrebbe essere una versione diversa del modulo).\n"
-                                    "Vuoi copiarlo comunque negli Allegati della pratica?") == QMessageBox.Yes:
+        try:
+            n_campi = len(core.firma_campi(pdf)[1])
+        except Exception as e:  # noqa
+            QMessageBox.warning(self, "Carica modulo", f"Non riesco ad aprire «{pdf.name}»:\n{e}")
+            return
+        m, _punteggio = core.riconosci_modulo(pdf, moduli)
+        if not m and n_campi == 0 and xfa.leggi_datasets(pdf):
+            titolo, _p = xfa.estrai(pdf)
+            self._in_controllo = True
+            try:
+                _chiave, out = core.importa_xfa(self.pratica, pdf)
+            finally:
+                self._in_controllo = False
+            self._sorveglia()
+            self._rivedi_xfa(out, f"<b>{pdf.name}</b> è un modulo dinamico del portale "
+                                  f"(<i>{titolo}</i>): l'ho messo nella cartella Moduli della pratica. "
+                                  "Questi sono i dati che ho letto: scegli quali salvare. "
+                                  "Il file resta modificabile solo con Adobe Acrobat/Reader; "
+                                  "se lo correggi e lo salvi, rileggo i dati.")
+            self.stato(f"«{pdf.name}» caricato come modulo del portale")
+            return
+        if not m and n_campi == 0:
+            r = QMessageBox.question(
+                self, "PDF senza campi compilabili",
+                f"«{pdf.name}» non contiene campi compilabili: probabilmente è stato stampato in PDF, "
+                "appiattito o firmato digitalmente, quindi i dati non si possono leggere.\n\n"
+                "Vuoi copiarlo comunque negli Allegati della pratica?")
+            if r == QMessageBox.Yes:
                 shutil.copy2(pdf, self.pratica.cartella / "Allegati" / pdf.name)
             return
+        if not m:
+            # versione diversa del modulo: lascio scegliere, ordinando per campi in comune
+            cand = sorted((x for x in moduli if x.mappato), key=lambda x: -core.campi_in_comune(pdf, x))
+            voci = [f"{x.titolo}  ({core.campi_in_comune(pdf, x)} campi in comune)" for x in cand]
+            voci.append("Nessuno: copialo negli Allegati")
+            scelta, ok = QInputDialog.getItem(
+                self, "Modulo non riconosciuto",
+                f"«{pdf.name}» ha {n_campi} campi ma non coincide con nessun modello di Fascicolo\n"
+                "(forse è una versione diversa del modulo). A quale modulo corrisponde?\n"
+                "Leggerò i campi che hanno lo stesso nome.", voci, 0, False)
+            if not ok:
+                return
+            if scelta == voci[-1]:
+                shutil.copy2(pdf, self.pratica.cartella / "Allegati" / pdf.name)
+                self.stato(f"«{pdf.name}» copiato negli Allegati")
+                return
+            m = cand[voci.index(scelta)]
         self._in_controllo = True
         try:
             out = core.importa_modulo(self.pratica, m, pdf)
