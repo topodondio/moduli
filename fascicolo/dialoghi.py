@@ -40,18 +40,10 @@ class NuovaPratica(QDialog):
         self.comune.addItems([""] + comuni)
         f.addRow("Nome pratica", self.nome)
         f.addRow("Comune", self.comune)
-        h = QHBoxLayout()
-        self.cartella = QLineEdit()
-        self.cartella.setPlaceholderText("Moduli (dentro la cartella della pratica)")
-        b = QPushButton("Sfoglia…")
-        b.clicked.connect(self._sfoglia)
-        h.addWidget(self.cartella, 1)
-        h.addWidget(b)
-        f.addRow("Cartella dei moduli", h)
+
         lay.addLayout(f)
-        n = QLabel("Verrà creata una cartella con le sottocartelle Moduli, Elaborati, Allegati, Consegne e Ricevute. "
-                   "Se vuoi i moduli compilati in un'altra cartella (ad esempio quella del progetto sul server), "
-                   "sceglila qui: si può cambiare anche dopo dalla scheda Moduli.")
+        n = QLabel("Verrà creata la cartella della pratica, con dentro Moduli e Allegati. "
+                   "Ogni modulo potrai poi salvarlo dove vuoi.")
         n.setObjectName("nota")
         n.setWordWrap(True)
         lay.addWidget(n)
@@ -64,7 +56,7 @@ class NuovaPratica(QDialog):
             self.cartella.setText(d)
 
     def cartella_moduli(self):
-        return self.cartella.text().strip()
+        return ""
 
     def accept(self):
         if not self.nome.text().strip():
@@ -138,17 +130,15 @@ class DatiMancanti(QDialog):
 # --------------------------------------------------------------------------- comuni
 
 class Comuni(QDialog):
-    COL = [("nome", "Comune"), ("pec", "PEC"), ("peo", "Email ordinaria"), ("consegna", "Modalità di consegna"),
-           ("copie", "Copie cartacee"), ("indirizzo", "Indirizzo ufficio tecnico"), ("note", "Note")]
+    COL = [("nome", "Comune"), ("pec", "PEC del comune"), ("note", "Note")]
 
     def __init__(self, archivio, parent=None):
         super().__init__(parent)
         self.archivio = archivio
-        self.setWindowTitle("Comuni e modalità di consegna")
-        self.resize(1050, 480)
+        self.setWindowTitle("Comuni")
+        self.resize(760, 460)
         lay = QVBoxLayout(self)
-        n = QLabel("Per ogni comune indica come vuole ricevere le pratiche. Questi dati servono alla consegna "
-                   "e all'informativa privacy dei moduli (PEC del comune).")
+        n = QLabel("I comuni per cui lavorate. La PEC del comune viene scritta nell'informativa privacy dei moduli.")
         n.setObjectName("nota")
         n.setWordWrap(True)
         lay.addWidget(n)
@@ -157,7 +147,7 @@ class Comuni(QDialog):
         self.tab.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.tab.horizontalHeader().setStretchLastSection(True)
         self.tab.verticalHeader().setVisible(False)
-        for i, w in enumerate([130, 230, 190, 180, 100, 200]):
+        for i, w in enumerate([160, 300]):
             self.tab.setColumnWidth(i, w)
         lay.addWidget(self.tab)
         for c in archivio.comuni():
@@ -204,7 +194,8 @@ class Comuni(QDialog):
                     it = self.tab.item(r, j)
                     c[k] = it.text().strip() if it else ""
             if c["nome"]:
-                out.append(c)
+                vecchio = self.archivio.comune(c["nome"]) or {}
+                out.append({**vecchio, **c})
         self.archivio.salva_comuni(sorted(out, key=lambda c: c["nome"].lower()))
         super().accept()
 

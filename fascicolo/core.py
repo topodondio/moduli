@@ -1,6 +1,7 @@
 """Logica di Fascicolo: archivio pratiche, dati, mappature e compilazione PDF."""
 import json
 import os
+import time
 import re
 import shutil
 import sys
@@ -17,7 +18,7 @@ MAPPATURE_DIR = APP_DIR / "mappature"
 CONFIG_FILE = Path.home() / ".fascicolo.json"
 
 FILE_PRATICA = "pratica.json"
-SOTTOCARTELLE = ["Moduli", "Elaborati", "Allegati", "Consegne", "Ricevute"]
+SOTTOCARTELLE = ["Moduli", "Allegati"]
 
 
 # --------------------------------------------------------------------------- utilità
@@ -142,6 +143,8 @@ class Pratica:
         return self.grezzo(key)
 
     def set(self, key, val):
+        if self.valori.get(key) != val:
+            self.dati["_ts_dati"] = time.time()
         self.valori[key] = val
 
     # cartella dei moduli --------------------------------------------------
@@ -196,7 +199,8 @@ class Pratica:
         scrivi_json(self.cartella / FILE_PRATICA, self.dati)
 
     def registra_modulo(self, mod_id, file_out, importato=False):
-        info = {"file": str(Path(file_out).name), "data": datetime.now().strftime("%d/%m/%Y %H:%M")}
+        info = {"file": str(Path(file_out).name), "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                "ts": time.time()}
         if importato:
             info["importato"] = True
         try:

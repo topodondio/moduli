@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QDir, QUrl, QFileSystemWatcher, QEvent
 from PySide6.QtGui import QDesktopServices, QIcon
-from PySide6.QtWidgets import (QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QListWidget,
+from PySide6.QtWidgets import (QMainWindow, QDialog, QComboBox, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QListWidget,
                                QListWidgetItem, QPushButton, QTabWidget, QStackedWidget, QScrollArea, QFormLayout,
                                QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox,
                                QFileDialog, QTreeView, QFileSystemModel, QInputDialog, QCheckBox, QPlainTextEdit,
@@ -216,208 +216,186 @@ class SchedaDati(QWidget):
 
 # =========================================================================== scheda moduli
 
+class SceltaModulo(QDialog):
+    """Elenco dei moduli disponibili, con ricerca."""
+
+    def __init__(self, moduli, gia, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Scegli il modulo da compilare")
+        self.resize(560, 560)
+        lay = QVBoxLayout(self)
+        self.cerca = QLineEdit()
+        self.cerca.setPlaceholderText("Cerca un modulo…")
+        lay.addWidget(self.cerca)
+        self.lista = QListWidget()
+        gruppo = None
+        for m in moduli:
+            if m.gruppo != gruppo:
+                gruppo = m.gruppo
+                h = QListWidgetItem(gruppo or "Altro")
+                h.setFlags(Qt.NoItemFlags)
+                f = h.font()
+                f.setBold(True)
+                h.setFont(f)
+                self.lista.addItem(h)
+            it = QListWidgetItem(("    " + m.titolo) + ("   ✓ già nella pratica" if m.id in gia else ""))
+            it.setData(Qt.UserRole, m.id)
+            self.lista.addItem(it)
+        self.lista.itemDoubleClicked.connect(lambda *_: self.accept())
+        self.cerca.textChanged.connect(self._filtra)
+        lay.addWidget(self.lista)
+        box = QHBoxLayout()
+        box.addStretch()
+        b = bottone("Compila", self.accept, True)
+        box.addWidget(b)
+        box.addWidget(bottone("Annulla", self.reject))
+        lay.addLayout(box)
+
+    def _filtra(self, t):
+        t = t.lower()
+        for i in range(self.lista.count()):
+            it = self.lista.item(i)
+            if it.data(Qt.UserRole):
+                it.setHidden(bool(t) and t not in it.text().lower())
+
+    def scelto(self):
+        it = self.lista.currentItem()
+        return it.data(Qt.UserRole) if it else None
+
+
 class SchedaModuli(QWidget):
+    """I moduli di questa pratica: uno per riga, con dove è salvato e i pulsanti per aprirlo o spostarlo."""
+
     def __init__(self, finestra):
         super().__init__()
         self.f = finestra
         self.pratica = None
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 14, 16, 14)
-        n = QLabel("Scegli un modulo e premi <b>Compila</b>: ti verranno chiesti solo i dati che mancano. "
-                   "Puoi anche aprire il PDF e scriverci direttamente: quando lo salvi, Fascicolo legge i dati nuovi "
-                   "e ti propone di aggiornarli nella pratica. Se hai già un modulo compilato, usa <b>Carica modulo compilato</b>.")
-        n.setWordWrap(True)
-        n.setObjectName("nota")
-        lay.addWidget(n)
-        hc = QHBoxLayout()
-        hc.addWidget(QLabel("Cartella predefinita dei moduli:"))
-        self.lbl_cartella = QLabel()
-        self.lbl_cartella.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        f = self.lbl_cartella.font()
-        f.setBold(True)
-        self.lbl_cartella.setFont(f)
-        hc.addWidget(self.lbl_cartella, 1)
-        hc.addWidget(bottone("Cambia…", self.cambia_cartella,
-                             tip="Cartella usata dai moduli che non hanno una cartella propria"))
-        hc.addWidget(bottone("Cartella dei moduli selezionati…", self.cartella_selezionati,
-                             tip="Salva i moduli selezionati in una cartella diversa (puoi selezionarne più di uno)"))
-        hc.addWidget(bottone("Apri cartella moduli", lambda: self.pratica and core.apri_con_sistema(self._cartella())))
-        lay.addLayout(hc)
-        self.tab = QTableWidget(0, 5)
-        self.tab.setHorizontalHeaderLabels(["Modulo", "Gruppo", "Stato dati", "Ultima compilazione", "Cartella"])
-        self.tab.verticalHeader().setVisible(False)
-        self.tab.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.tab.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self.tab.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        hh = self.tab.horizontalHeader()
-        hh.setSectionResizeMode(0, QHeaderView.Stretch)
-        for i, w in ((1, 140), (2, 120), (3, 140), (4, 220)):
-            hh.setSectionResizeMode(i, QHeaderView.Interactive)
-            self.tab.setColumnWidth(i, w)
-        self.tab.doubleClicked.connect(lambda *_: self.compila())
-        lay.addWidget(self.tab)
         h = QHBoxLayout()
-        h.addWidget(bottone("Compila", self.compila, True))
-        h.addWidget(bottone("Apri PDF", self.apri, tip="Apri il PDF per controllarlo o scriverci: i dati salvati tornano nella pratica"))
-        h.addWidget(bottone("Carica modulo compilato…", self.carica_compilato,
-                            tip="Porta nella pratica un modulo già compilato e ne legge i dati"))
-        h.addWidget(bottone("Mostra dati mancanti", self.mostra_mancanti))
-        h.addWidget(bottone("Ricompila tutti i già compilati", self.ricompila_tutti,
-                            tip="Utile dopo aver corretto un dato: aggiorna tutti i moduli già generati"))
+        h.addWidget(bottone("+  Compila un modulo", self.nuovo, True,
+                            tip="Scegli un modulo: si apre già con i dati della pratica, completalo nel PDF"))
+        h.addWidget(bottone("Carica un modulo già compilato…", self.carica_compilato))
         h.addStretch()
-        h.addWidget(bottone("Insegna modulo…", self.insegna, tip="Collega i campi di un PDF ai dati della pratica"))
-        h.addWidget(bottone("Aggiungi modello PDF…", self.aggiungi_modello))
         lay.addLayout(h)
+        n = QLabel("Il modulo si apre nel tuo programma PDF già compilato con i dati della pratica: completalo e salvalo. "
+                   "Fascicolo legge i dati nuovi e li usa per gli altri moduli.")
+        n.setObjectName("nota")
+        n.setWordWrap(True)
+        lay.addWidget(n)
+        area = QScrollArea()
+        area.setWidgetResizable(True)
+        self.contenitore = QWidget()
+        self.contenitore.setObjectName("scheda")
+        self.righe = QVBoxLayout(self.contenitore)
+        self.righe.setContentsMargins(14, 10, 14, 10)
+        self.righe.setSpacing(6)
+        area.setWidget(self.contenitore)
+        lay.addWidget(area, 1)
+        self.vuoto = QLabel("Nessun modulo in questa pratica. Premi «Compila un modulo» per iniziare.")
+        self.vuoto.setObjectName("nota")
+        self.vuoto.setAlignment(Qt.AlignCenter)
+        lay.addWidget(self.vuoto)
 
-    def _cartella(self):
-        d = self.pratica.cartella_moduli
-        d.mkdir(parents=True, exist_ok=True)
-        return d
-
-    def cambia_cartella(self):
-        if not self.pratica:
-            return
-        attuale = self.pratica.cartella_moduli
-        d = QFileDialog.getExistingDirectory(self, "Cartella in cui salvare i moduli di questa pratica",
-                                             str(attuale if attuale.exists() else self.pratica.cartella))
-        if not d or Path(d).resolve() == attuale.resolve():
-            return
-        fatti = [i for i in self.pratica.dati.get("_moduli", {}).values()
-                 if (attuale / i.get("file", "")).exists()]
-        if fatti and QMessageBox.question(
-                self, "Cambia cartella dei moduli",
-                f"Sposto anche i {len(fatti)} moduli già compilati da\n{attuale}\na\n{d}?\n\n"
-                "(Servono lì perché Fascicolo li possa aprire, ricompilare e rileggere.)") != QMessageBox.Yes:
-            return
-        try:
-            n = core.cambia_cartella_moduli(self.pratica, d, sposta=True)
-        except Exception as e:  # noqa – ad esempio un PDF aperto in Acrobat
-            QMessageBox.warning(self, "Cambia cartella", f"Non sono riuscito a spostare tutti i moduli:\n{e}")
-            return
-        self.f._sorveglia()
-        self.carica(self.pratica)
-        self.f.stato(f"Cartella dei moduli: {d}" + (f" ({n} moduli spostati)" if n else ""))
+    def _titolo(self, mod_id):
+        if mod_id.startswith("xfa:"):
+            return mod_id[4:] + "  (modulo del portale)"
+        m = self.f._modulo_per_id(mod_id)
+        return m.titolo if m else mod_id
 
     def carica(self, pratica):
         self.pratica = pratica
-        self.lbl_cartella.setText(str(pratica.cartella_moduli))
-        self.lbl_cartella.setToolTip(str(pratica.cartella_moduli))
-        self.moduli = core.elenco_moduli(self.f.archivio)
-        self.moduli.sort(key=lambda m: (0 if m.mappato else 1, m.map.get("ordine", 500), m.id))
-        self.tab.setRowCount(len(self.moduli))
-        fatti = pratica.dati.get("_moduli", {})
-        for r, m in enumerate(self.moduli):
-            it = QTableWidgetItem(m.titolo)
-            it.setToolTip(m.pdf.name)
-            self.tab.setItem(r, 0, it)
-            self.tab.setItem(r, 1, QTableWidgetItem(m.gruppo or "—"))
-            if not m.mappato:
-                st = QTableWidgetItem("da insegnare")
-                st.setForeground(Qt.gray)
-            else:
-                manc = core.dati_mancanti(pratica, m)
-                st = QTableWidgetItem("pronto" if not manc else f"mancano {len(manc)} dati")
-                st.setForeground(Qt.darkGreen if not manc else Qt.darkYellow)
-            self.tab.setItem(r, 2, st)
-            info = fatti.get(m.id, {})
-            self.tab.setItem(r, 3, QTableWidgetItem(info.get("data", "") + ("  (caricato)" if info.get("importato") else "")))
-            propria = pratica.cartella_propria(m.id)
-            it = QTableWidgetItem(self._breve(propria) if propria else "predefinita")
-            it.setToolTip(str(pratica.cartella_modulo(m.id)))
-            if not propria:
-                it.setForeground(Qt.gray)
-            self.tab.setItem(r, 4, it)
+        while self.righe.count():
+            it = self.righe.takeAt(0)
+            w = it.widget()
+            if w:
+                w.hide()
+                w.setParent(None)
+                w.deleteLater()
+        voci = list(pratica.dati.get("_moduli", {}).items())
+        ordine = {m.id: m.map.get("ordine", 500) for m in core.elenco_moduli(self.f.archivio)}
+        voci.sort(key=lambda kv: (ordine.get(kv[0], 900), kv[0]))
+        self.vuoto.setVisible(not voci)
+        for mod_id, info in voci:
+            riga = QWidget()
+            h = QHBoxLayout(riga)
+            h.setContentsMargins(0, 2, 0, 2)
+            h.setSpacing(8)
+            t = QLabel(self._titolo(mod_id))
+            t.setFixedWidth(320)
+            t.setWordWrap(True)
+            t.setToolTip(f"Ultima modifica: {info.get('data', '')}")
+            h.addWidget(t)
+            f = pratica.file_modulo(mod_id)
+            casella = QLineEdit(str(f))
+            casella.setReadOnly(True)
+            casella.setCursorPosition(0)
+            casella.setToolTip(str(f))
+            if not f.exists():
+                casella.setProperty("mancante", "true")
+                casella.setToolTip("File non trovato: " + str(f))
+            h.addWidget(casella, 1)
+            h.addWidget(bottone("Scegli dove salvarlo…", lambda _=0, k=mod_id: self.sposta(k)))
+            h.addWidget(bottone("Apri", lambda _=0, k=mod_id: self.apri(k), True))
+            self.righe.addWidget(riga)
+            riga.show()
+        self.righe.addStretch()
+        self.righe.activate()
 
-    @staticmethod
-    def _breve(p):
-        parti = Path(p).parts
-        return str(Path(*parti[-2:])) if len(parti) > 2 else str(p)
-
-    def _selezionati(self):
-        righe = sorted({i.row() for i in self.tab.selectedIndexes()})
-        return [self.moduli[r] for r in righe if 0 <= r < len(self.moduli)]
-
-    def cartella_selezionati(self):
+    # ------------------------------------------------------------------
+    def nuovo(self):
         if not self.pratica:
             return
-        sel = self._selezionati()
-        if not sel:
-            QMessageBox.information(self, "Cartella dei moduli", "Seleziona uno o più moduli nella tabella.")
+        self.f.scheda_dati.salva_subito()
+        moduli = [m for m in core.elenco_moduli(self.f.archivio) if m.mappato]
+        moduli.sort(key=lambda m: m.map.get("ordine", 500))
+        d = SceltaModulo(moduli, set(self.pratica.dati.get("_moduli", {})), self)
+        if not d.exec() or not d.scelto():
             return
-        nomi = "\n".join(f"• {m.titolo}" for m in sel[:12]) + ("\n…" if len(sel) > 12 else "")
-        scelta = QMessageBox(self)
-        scelta.setWindowTitle("Cartella dei moduli selezionati")
-        scelta.setText(f"Dove vuoi salvare questi moduli?\n\n{nomi}")
-        b_scegli = scelta.addButton("Scegli cartella…", QMessageBox.AcceptRole)
-        b_pred = scelta.addButton("Usa la cartella predefinita", QMessageBox.ActionRole)
-        scelta.addButton("Annulla", QMessageBox.RejectRole)
-        scelta.exec()
-        if scelta.clickedButton() is b_scegli:
-            partenza = self.pratica.cartella_modulo(sel[0].id)
-            d = QFileDialog.getExistingDirectory(self, "Cartella per i moduli selezionati",
-                                                 str(partenza if partenza.exists() else self.pratica.cartella))
-            if not d:
-                return
-            nuova = d
-        elif scelta.clickedButton() is b_pred:
-            nuova = None
-        else:
-            return
-        errori, spostati = [], 0
-        for m in sel:
-            try:
-                prima = self.pratica.file_modulo(m.id).exists()
-                core.cambia_cartella_modulo(self.pratica, m.id, nuova)
-                spostati += prima
-            except Exception as e:  # noqa – PDF aperto in un altro programma
-                errori.append(f"{m.titolo}: {e}")
-        if errori:
-            QMessageBox.warning(self, "Cartella dei moduli", "Alcuni moduli non sono stati spostati:\n\n" + "\n".join(errori))
-        self.f._sorveglia()
-        self.carica(self.pratica)
-        dove = nuova or "cartella predefinita"
-        self.f.stato(f"{len(sel)} moduli → {dove}" + (f" ({spostati} PDF spostati)" if spostati else ""))
+        self.apri(d.scelto())
 
-    def _sel(self):
-        r = self.tab.currentRow()
-        return self.moduli[r] if 0 <= r < len(self.moduli) else None
-
-    def compila(self):
-        m = self._sel()
-        if not m or not self.pratica:
+    def apri(self, mod_id):
+        """Apre il modulo nel programma PDF; se non c'è ancora, o se i dati della pratica sono cambiati,
+        prima lo compila (le parti scritte a mano nel PDF restano)."""
+        if not self.pratica:
             return
         self.f.scheda_dati.salva_subito()
-        if not m.mappato:
-            if QMessageBox.question(self, "Modulo da insegnare",
-                                    f"«{m.titolo}» non è ancora collegato ai dati della pratica.\n"
-                                    "Vuoi insegnarlo adesso?") == QMessageBox.Yes:
-                self.insegna()
+        self.f.controlla_pdf_modificati()  # prima leggo eventuali modifiche fatte nel PDF
+        f = self.pratica.file_modulo(mod_id)
+        m = None if mod_id.startswith("xfa:") else self.f._modulo_per_id(mod_id)
+        info = self.pratica.dati.get("_moduli", {}).get(mod_id, {})
+        da_fare = m is not None and (not f.exists() or
+                                     float(self.pratica.dati.get("_ts_dati", 0)) > float(info.get("ts", 0)))
+        if da_fare:
+            try:
+                f, _res = core.genera(self.pratica, m)
+            except Exception as e:  # noqa – ad esempio il PDF è aperto in Acrobat
+                if not f.exists():
+                    QMessageBox.critical(self, "Compila", f"Non riesco a creare il modulo:\n{e}")
+                    return
+                self.f.stato(f"Non ho potuto aggiornare il PDF (è aperto?): lo apro com'è")
+            self.f._sorveglia()
+            self.carica(self.pratica)
+        if not f.exists():
+            QMessageBox.warning(self, "Apri", f"Il file non si trova più:\n{f}")
             return
-        manc = core.dati_mancanti(self.pratica, m)
-        if manc:
-            d = DatiMancanti(self.pratica, manc, m.titolo, [c["nome"] for c in self.f.archivio.comuni()], self)
-            if not d.exec():
-                return
-            self.f.scheda_dati.carica(self.pratica)
-        try:
-            out, (n, tot) = core.genera(self.pratica, m)
-        except Exception as e:  # noqa
-            QMessageBox.critical(self, "Errore", f"Non sono riuscito a compilare il modulo:\n{e}")
-            return
-        self.carica(self.pratica)
-        self.f.stato(f"{m.titolo}: compilati {n} campi → {out.name}")
-        if QMessageBox.question(self, "Modulo compilato",
-                                f"«{m.titolo}» è pronto in:\n{out.parent}\n\nVuoi aprirlo per controllarlo?") == QMessageBox.Yes:
-            core.apri_con_sistema(out)
+        core.apri_con_sistema(f)
+        self.f.stato(f"Aperto {f.name}: quando lo salvi, leggo i dati nuovi")
 
-    def apri(self):
-        m = self._sel()
-        if m and self.pratica:
-            f = self.pratica.file_modulo(m.id)
-            if f.exists():
-                core.apri_con_sistema(f)
-            else:
-                QMessageBox.information(self, "Apri", "Questo modulo non è ancora stato compilato per la pratica.")
+    def sposta(self, mod_id):
+        attuale = self.pratica.cartella_modulo(mod_id)
+        d = QFileDialog.getExistingDirectory(self, f"Dove salvare «{self._titolo(mod_id)}»",
+                                             str(attuale if attuale.exists() else self.pratica.cartella))
+        if not d:
+            return
+        try:
+            nuovo = core.cambia_cartella_modulo(self.pratica, mod_id, d)
+        except Exception as e:  # noqa
+            QMessageBox.warning(self, "Sposta", f"Non riesco a spostare il file (forse è aperto):\n{e}")
+            return
+        self.f._sorveglia()
+        self.carica(self.pratica)
+        self.f.stato(f"Salvato in {nuovo.parent}")
 
     def carica_compilato(self):
         if not self.pratica:
@@ -427,249 +405,154 @@ class SchedaModuli(QWidget):
             self.f.importa_pdf(Path(f))
         self.carica(self.pratica)
 
-    def mostra_mancanti(self):
-        m = self._sel()
-        if not m or not m.mappato:
-            return
-        manc = core.dati_mancanti(self.pratica, m)
-        self.f.scheda_dati.evidenzia(set(manc))
-        if manc:
-            self.f.tabs.setCurrentIndex(0)
-            self.f.scheda_dati.vai_a(manc[0])
-            self.f.stato(f"Evidenziati in arancione i {len(manc)} dati mancanti per «{m.titolo}»")
-        else:
-            self.f.stato("Nessun dato mancante")
 
-    def ricompila_tutti(self):
+TIPI_ALLEGATO = ["", "Carta d'identità", "Patente", "Codice fiscale / tessera sanitaria", "Passaporto",
+                 "Visura catastale", "Visura tavolare", "Estratto mappa", "Atto di proprietà", "Delega / procura",
+                 "Ricevuta di pagamento", "Fotografie", "Elaborato grafico", "Relazione", "Altro"]
+
+
+class SchedaAllegati(QWidget):
+    """Documenti da tenere con la pratica: documenti d'identità, codici fiscali, visure, foto…"""
+
+    def __init__(self, finestra):
+        super().__init__()
+        self.f = finestra
+        self.pratica = None
+        self.setAcceptDrops(True)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(16, 14, 16, 14)
+        h = QHBoxLayout()
+        h.addWidget(bottone("+  Aggiungi file…", self.aggiungi, True))
+        h.addWidget(bottone("Apri", self.apri))
+        h.addWidget(bottone("Togli dalla pratica", self.togli))
+        h.addStretch()
+        h.addWidget(bottone("Apri cartella allegati", self.apri_cartella))
+        lay.addLayout(h)
+        n = QLabel("Qualsiasi file (PDF, foto, Word…): carte d'identità, patenti, codici fiscali, visure, deleghe. "
+                   "Puoi anche trascinarli qui. Vengono copiati nella cartella Allegati della pratica.")
+        n.setObjectName("nota")
+        n.setWordWrap(True)
+        lay.addWidget(n)
+        self.tab = QTableWidget(0, 4)
+        self.tab.setHorizontalHeaderLabels(["File", "Tipo di documento", "Note", "Aggiunto il"])
+        self.tab.verticalHeader().setVisible(False)
+        self.tab.setSelectionBehavior(QAbstractItemView.SelectRows)
+        hh = self.tab.horizontalHeader()
+        hh.setSectionResizeMode(0, QHeaderView.Stretch)
+        hh.setSectionResizeMode(1, QHeaderView.Interactive)
+        hh.setSectionResizeMode(2, QHeaderView.Stretch)
+        hh.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        self.tab.setColumnWidth(1, 250)
+        self.tab.verticalHeader().setDefaultSectionSize(36)
+        self.tab.cellDoubleClicked.connect(lambda r, c: c == 0 and self.apri())
+        self.tab.itemChanged.connect(self._nota_cambiata)
+        lay.addWidget(self.tab, 1)
+
+    def _cartella(self):
+        d = self.pratica.cartella / "Allegati"
+        d.mkdir(exist_ok=True)
+        return d
+
+    def _meta(self):
+        return self.pratica.dati.setdefault("_allegati", {})
+
+    def carica(self, pratica):
+        self.pratica = pratica
+        meta = self._meta()
+        files = sorted([f for f in self._cartella().iterdir() if f.is_file() and not f.name.startswith(".")],
+                       key=lambda f: f.name.lower())
+        self.tab.blockSignals(True)
+        self.tab.setRowCount(len(files))
+        for r, f in enumerate(files):
+            info = meta.get(f.name, {})
+            it = QTableWidgetItem(f.name)
+            it.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+            it.setData(Qt.UserRole, f.name)
+            self.tab.setItem(r, 0, it)
+            cb = QComboBox()
+            cb.setEditable(True)
+            cb.addItems(TIPI_ALLEGATO)
+            cb.setEditText(info.get("tipo", ""))
+            cb.currentTextChanged.connect(lambda t, n=f.name: self._imposta(n, "tipo", t))
+            self.tab.setCellWidget(r, 1, cb)
+            self.tab.setItem(r, 2, QTableWidgetItem(info.get("nota", "")))
+            d = info.get("data") or datetime.fromtimestamp(f.stat().st_mtime).strftime("%d/%m/%Y")
+            it = QTableWidgetItem(d)
+            it.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+            self.tab.setItem(r, 3, it)
+        self.tab.blockSignals(False)
+
+    def _imposta(self, nome, chiave, valore):
+        self._meta().setdefault(nome, {})[chiave] = valore
+        self.pratica.salva()
+
+    def _nota_cambiata(self, it):
+        if it.column() == 2:
+            nome = self.tab.item(it.row(), 0).data(Qt.UserRole)
+            self._imposta(nome, "nota", it.text().strip())
+
+    def _selezionati(self):
+        righe = sorted({i.row() for i in self.tab.selectedIndexes()})
+        return [self.tab.item(r, 0).data(Qt.UserRole) for r in righe]
+
+    def aggiungi(self, files=None):
         if not self.pratica:
             return
-        self.f.scheda_dati.salva_subito()
-        fatti = self.pratica.dati.get("_moduli", {})
-        n = 0
-        for m in self.moduli:
-            if m.id in fatti and m.mappato:
-                core.genera(self.pratica, m)
+        if not files:
+            files, _ = QFileDialog.getOpenFileNames(self, "Aggiungi documenti alla pratica", "",
+                                                    "Tutti i file (*.*);;PDF (*.pdf);;Immagini (*.jpg *.jpeg *.png *.tif *.tiff *.heic)")
+        if not files:
+            return
+        dest = self._cartella()
+        for f in files:
+            src = Path(f)
+            nome = src.name
+            n = 2
+            while (dest / nome).exists():
+                nome = f"{src.stem} ({n}){src.suffix}"
                 n += 1
-        self.carica(self.pratica)
-        self.f.stato(f"Ricompilati {n} moduli (le versioni precedenti sono in Moduli/_precedenti)")
-
-    def insegna(self):
-        m = self._sel()
-        if not m:
-            return
-        d = InsegnaModulo(m, self.moduli, self.f.archivio, self)
-        if d.exec():
-            self.carica(self.pratica)
-            self.f.stato(f"Mappatura di «{m.titolo}» salvata")
-
-    def aggiungi_modello(self):
-        files, _ = QFileDialog.getOpenFileNames(self, "Aggiungi modelli PDF compilabili", "", "PDF (*.pdf)")
-        if not files:
-            return
-        dest = self.f.archivio.impostazioni / "moduli"
-        dest.mkdir(exist_ok=True)
-        for f in files:
-            shutil.copy2(f, dest / Path(f).name)
-        self.carica(self.pratica)
-        self.f.stato(f"Aggiunti {len(files)} modelli: ora vanno insegnati")
-
-
-# =========================================================================== scheda documenti
-
-class SchedaDocumenti(QWidget):
-    def __init__(self, finestra):
-        super().__init__()
-        self.f = finestra
-        self.pratica = None
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(16, 14, 16, 14)
-        self.model = QFileSystemModel()
-        self.model.setFilter(QDir.AllEntries | QDir.NoDotAndDotDot)
-        self.tree = QTreeView()
-        self.tree.setModel(self.model)
-        self.tree.setColumnWidth(0, 420)
-        self.tree.setSortingEnabled(True)
-        self.tree.doubleClicked.connect(lambda i: core.apri_con_sistema(self.model.filePath(i)))
-        lay.addWidget(self.tree)
-        h = QHBoxLayout()
-        h.addWidget(bottone("Aggiungi file…", self.aggiungi, True))
-        h.addWidget(bottone("Apri cartella della pratica", lambda: self.pratica and core.apri_con_sistema(self.pratica.cartella)))
-        h.addStretch()
-        lay.addLayout(h)
-
-    def carica(self, pratica):
-        self.pratica = pratica
-        root = self.model.setRootPath(str(pratica.cartella))
-        self.tree.setRootIndex(root)
-
-    def aggiungi(self):
-        if not self.pratica:
-            return
-        files, _ = QFileDialog.getOpenFileNames(self, "Aggiungi file alla pratica")
-        if not files:
-            return
-        sotto, ok = QInputDialog.getItem(self, "Dove?", "Copia nella cartella:", core.SOTTOCARTELLE, 1, False)
-        if not ok:
-            return
-        copiati = 0
-        for f in files:
-            if f.lower().endswith(".pdf") and xfa.leggi_datasets(f):
-                if QMessageBox.question(self, "Modulo del portale",
-                                        f"«{Path(f).name}» è un modulo compilato del portale.\n"
-                                        "Vuoi caricarlo nella pratica e leggerne i dati?") == QMessageBox.Yes:
-                    self.f.importa_pdf(Path(f))
-                    continue
-            if f.lower().endswith(".pdf"):
-                m, _s = core.riconosci_modulo(f, core.elenco_moduli(self.f.archivio))
-                if m and m.mappato and QMessageBox.question(
-                        self, "Modulo riconosciuto",
-                        f"«{Path(f).name}» è il modulo «{m.titolo}».\n"
-                        "Vuoi caricarlo come modulo della pratica e leggerne i dati?") == QMessageBox.Yes:
-                    self.f.importa_pdf(Path(f))
-                    continue
-            shutil.copy2(f, self.pratica.cartella / sotto / Path(f).name)
-            copiati += 1
-        self.f.stato(f"Copiati {copiati} file in {sotto}")
-
-
-# =========================================================================== scheda consegna
-
-class SchedaConsegna(QWidget):
-    def __init__(self, finestra):
-        super().__init__()
-        self.f = finestra
-        self.pratica = None
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(16, 14, 16, 14)
-        self.info = QLabel()
-        self.info.setObjectName("avviso")
-        self.info.setWordWrap(True)
-        self.info.setTextFormat(Qt.RichText)
-        lay.addWidget(self.info)
-        split = QHBoxLayout()
-        g = QGroupBox("File da consegnare")
-        gv = QVBoxLayout(g)
-        self.lista = QListWidget()
-        gv.addWidget(self.lista)
-        split.addWidget(g, 3)
-        g2 = QGroupBox("Messaggio")
-        gv2 = QFormLayout(g2)
-        self.oggetto = QLineEdit()
-        self.testo = QPlainTextEdit()
-        gv2.addRow("Oggetto", self.oggetto)
-        gv2.addRow("Testo", self.testo)
-        split.addWidget(g2, 4)
-        lay.addLayout(split, 1)
-        h = QHBoxLayout()
-        h.addWidget(bottone("Prepara consegna", self.prepara, True,
-                            tip="Copia i file scelti in Consegne/<data> e prepara il messaggio"))
-        h.addStretch()
-        lay.addLayout(h)
-        lay.addWidget(QLabel("Storico consegne"))
-        self.storico = QListWidget()
-        self.storico.setMaximumHeight(120)
-        lay.addWidget(self.storico)
-
-    def carica(self, pratica):
-        self.pratica = pratica
-        com = self.f.archivio.comune(pratica.get("pratica.comune")) or {}
-        mod = com.get("consegna", "")
-        if not com:
-            self.info.setText(f"Il comune <b>{pratica.get('pratica.comune') or '(non indicato)'}</b> non è in elenco: "
-                              "aggiungilo da <b>Comuni</b> per avere le regole di consegna.")
-        else:
-            parti = [f"<b>{com['nome']}</b> – consegna: <b>{mod}</b>"]
-            if com.get("pec"):
-                parti.append(f"PEC: {com['pec']}")
-            if com.get("peo"):
-                parti.append(f"email: {com['peo']}")
-            if int(com.get("copie") or 0):
-                parti.append(f"copie cartacee: <b>{com['copie']}</b>")
-            if com.get("note"):
-                parti.append(f"<i>{com['note']}</i>")
-            self.info.setText(" · ".join(parti))
-        self.lista.clear()
-        visti = set()
-        for k in pratica.dati.get("_moduli", {}):
-            f = pratica.file_modulo(k)
-            if f.exists():
-                visti.add(f.resolve())
-                it = QListWidgetItem(f"Moduli/{f.name}")
-                it.setToolTip(str(f))
-                it.setData(Qt.UserRole, str(f))
-                it.setFlags(it.flags() | Qt.ItemIsUserCheckable)
-                it.setCheckState(Qt.Checked)
-                self.lista.addItem(it)
-        for sotto in ("Moduli", "Elaborati", "Allegati"):
-            d = pratica.cartella_moduli if sotto == "Moduli" else pratica.cartella / sotto
-            for f in sorted(d.glob("*")) if d.exists() else []:
-                if f.resolve() in visti:
-                    continue
-                if f.is_file():
-                    it = QListWidgetItem(f"{sotto}/{f.name}")
-                    it.setData(Qt.UserRole, str(f))
-                    it.setFlags(it.flags() | Qt.ItemIsUserCheckable)
-                    it.setCheckState(Qt.Checked if sotto != "Allegati" else Qt.Unchecked)
-                    self.lista.addItem(it)
-        tit = pratica.get("titolare.cognome") + " " + pratica.get("titolare.nome")
-        if pratica.get("titolare.tipo") == "Società":
-            tit = pratica.get("societa.denominazione")
-        imm = pratica.get("immobile.particelle.0.ped") and f"p.ed. {pratica.get('immobile.particelle.0.ped')}" \
-            or pratica.get("immobile.particelle.0.pf") and f"p.f. {pratica.get('immobile.particelle.0.pf')}" or ""
-        cc = pratica.get("immobile.particelle.0.cc")
-        parti = ["Pratica edilizia", tit.strip(), f"{imm} C.C. {cc}" if imm and cc else imm]
-        self.oggetto.setText(" – ".join(x for x in parti if x))
-        self.testo.setPlainText(
-            f"Spett.le Comune di {pratica.get('pratica.comune')},\n\n"
-            f"si trasmette in allegato la documentazione relativa a: {pratica.get('pratica.oggetto')}.\n\n"
-            f"Distinti saluti\n\n{pratica.get('progettista.titolo')} {pratica.get('progettista.nome')} "
-            f"{pratica.get('progettista.cognome')}".strip())
-        self.storico.clear()
-        for c in reversed(pratica.dati.get("_consegne", [])):
-            self.storico.addItem(f"{c['data']} – {c['modalita']} – {len(c['file'])} file → {c['cartella']}")
-
-    def prepara(self):
-        if not self.pratica:
-            return
-        files = [Path(self.lista.item(i).data(Qt.UserRole)) for i in range(self.lista.count())
-                 if self.lista.item(i).checkState() == Qt.Checked]
-        if not files:
-            QMessageBox.information(self, "Consegna", "Seleziona almeno un file.")
-            return
-        com = self.f.archivio.comune(self.pratica.get("pratica.comune")) or {}
-        mod = com.get("consegna", "PEC")
-        nome = f"{datetime.now():%Y-%m-%d}"
-        dest = self.pratica.cartella / "Consegne" / nome
-        i = 2
-        while dest.exists():
-            dest = self.pratica.cartella / "Consegne" / f"{nome}_{i}"
-            i += 1
-        dest.mkdir(parents=True)
-        for f in files:
-            shutil.copy2(f, dest / f.name)
-        destinatario = com.get("pec") if mod.startswith("PEC") else com.get("peo") or com.get("pec", "")
-        (dest / "messaggio.txt").write_text(
-            f"Destinatario: {destinatario}\nOggetto: {self.oggetto.text()}\n\n{self.testo.toPlainText()}\n\n"
-            f"Allegati:\n" + "\n".join(f" - {f.name}" for f in files), encoding="utf-8")
-        self.pratica.dati.setdefault("_consegne", []).append(
-            dict(data=datetime.now().strftime("%d/%m/%Y %H:%M"), modalita=mod, cartella=dest.name,
-                 file=[f.name for f in files], destinatario=destinatario))
+            shutil.copy2(src, dest / nome)
+            self._meta()[nome] = {"tipo": "", "nota": "", "data": datetime.now().strftime("%d/%m/%Y")}
         self.pratica.salva()
         self.carica(self.pratica)
-        core.apri_con_sistema(dest)
-        if mod.startswith(("PEC", "PEO")) and destinatario:
-            url = "mailto:" + destinatario + "?" + urllib.parse.urlencode(
-                {"subject": self.oggetto.text(), "body": self.testo.toPlainText()}, quote_via=urllib.parse.quote)
-            QDesktopServices.openUrl(QUrl(url))
-            QMessageBox.information(self, "Consegna pronta",
-                                    "Ho aperto la cartella con i file e un nuovo messaggio nel programma di posta.\n"
-                                    "Ricordati di firmare digitalmente i moduli e trascina i file come allegati.")
-        elif mod == "Cartaceo":
-            QMessageBox.information(self, "Consegna pronta",
-                                    f"I file sono nella cartella {dest.name}.\nStampa {com.get('copie') or 1} "
-                                    "copie di ciascuno per la consegna cartacea.")
-        else:
-            QMessageBox.information(self, "Consegna pronta", f"I file sono pronti nella cartella {dest.name}.")
+        self.f.stato(f"Aggiunti {len(files)} allegati")
+
+    def apri(self):
+        for n in self._selezionati():
+            core.apri_con_sistema(self._cartella() / n)
+
+    def apri_cartella(self):
+        if self.pratica:
+            core.apri_con_sistema(self._cartella())
+
+    def togli(self):
+        sel = self._selezionati()
+        if not sel:
+            return
+        if QMessageBox.question(self, "Togli allegati",
+                                f"Togliere {len(sel)} file dalla pratica?\n"
+                                "Non vengono cancellati: finiscono nella cartella Allegati/_tolti.") != QMessageBox.Yes:
+            return
+        cest = self._cartella() / "_tolti"
+        cest.mkdir(exist_ok=True)
+        for n in sel:
+            try:
+                shutil.move(str(self._cartella() / n), str(cest / n))
+                self._meta().pop(n, None)
+            except OSError as e:
+                QMessageBox.warning(self, "Togli", f"{n}: {e}")
+        self.pratica.salva()
+        self.carica(self.pratica)
+
+    def dragEnterEvent(self, e):
+        if e.mimeData().hasUrls():
+            e.acceptProposedAction()
+
+    def dropEvent(self, e):
+        files = [u.toLocalFile() for u in e.mimeData().urls() if u.isLocalFile() and Path(u.toLocalFile()).is_file()]
+        if files:
+            self.aggiungi(files)
+
 
 
 # =========================================================================== finestra
@@ -712,7 +595,7 @@ class Finestra(QMainWindow):
         self.lista.setObjectName("listaPratiche")
         self.lista.currentItemChanged.connect(self._seleziona)
         bl.addWidget(self.lista, 1)
-        bl.addWidget(bottone("Comuni e consegne", self.comuni))
+        bl.addWidget(bottone("Comuni", self.comuni))
         bl.addWidget(bottone("Cartella archivio…", self.scegli_archivio))
         self.lbl_archivio = QLabel()
         self.lbl_archivio.setObjectName("sottotitoloApp")
@@ -744,12 +627,10 @@ class Finestra(QMainWindow):
         self.tabs = QTabWidget()
         self.scheda_dati = SchedaDati(self)
         self.scheda_moduli = SchedaModuli(self)
-        self.scheda_doc = SchedaDocumenti(self)
-        self.scheda_consegna = SchedaConsegna(self)
+        self.scheda_allegati = SchedaAllegati(self)
         self.tabs.addTab(self.scheda_dati, "Dati pratica")
         self.tabs.addTab(self.scheda_moduli, "Moduli")
-        self.tabs.addTab(self.scheda_doc, "Documenti")
-        self.tabs.addTab(self.scheda_consegna, "Consegna")
+        self.tabs.addTab(self.scheda_allegati, "Allegati")
         self.tabs.currentChanged.connect(self._cambio_tab)
         dl.addWidget(self.tabs, 1)
         root.addWidget(destra, 1)

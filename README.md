@@ -12,37 +12,23 @@ secondo le regole di ogni comune. Non usa il browser né internet.
   da copiare sugli altri PC senza installare Python.
 
 ## Come si usa
-1. **Comuni e consegne** (barra a sinistra): inserisci i comuni con PEC/email, modalità di
-   consegna e numero di copie cartacee.
-2. **Nuova pratica**: crea la cartella `ANNO-NNN Nome` con Moduli, Elaborati, Allegati,
-   Consegne, Ricevute.
-3. **Dati pratica**: compila quello che sai; si salva da solo. Progettisti, imprese e
-   titolari ricorrenti si salvano in **rubrica** e si richiamano con un clic.
-4. **Cartella dei moduli**: di default i moduli compilati vanno in `Moduli/` dentro la
-   pratica, ma per ogni pratica puoi sceglierne un'altra (anche sul server, ad esempio
-   nella cartella del progetto): alla creazione della pratica oppure da *Moduli › Cambia
-   cartella…*, che sposta lì anche i moduli già compilati.
-   Ogni modulo può avere anche una **cartella propria**: seleziona uno o più moduli nella
-   tabella e premi *Cartella dei moduli selezionati…* (ad esempio il permesso di costruire in
-   `Server\Rossi\01 Permesso` e l'inizio lavori in `Server\Rossi\03 Cantiere`). La colonna
-   *Cartella* mostra dove va ogni modulo; "predefinita" vuol dire la cartella generale.
-5. **Moduli › Compila**: il programma chiede solo i dati che mancano a quel modulo, li salva
-   nella pratica e genera il PDF in `Moduli/`. Il modulo successivo li trova già.
-   Se correggi un dato, **Ricompila tutti** aggiorna i moduli già fatti (le versioni vecchie
-   vanno in `Moduli/_precedenti`).
-6. **Scrivere nei PDF**: con *Apri PDF* puoi compilare o correggere il modulo nel tuo lettore
-   (Acrobat, ecc.). Quando salvi, Fascicolo legge i dati nuovi e ti mostra cosa è cambiato:
-   scegli cosa salvare nella pratica e, se vuoi, aggiorna subito anche gli altri moduli.
-   Quando ricompili un modulo, le spunte e i campi che hai scritto a mano nel PDF restano.
-7. **Moduli già compilati**: con *Carica modulo compilato…* (o trascinandolo da *Documenti ›
-   Aggiungi file*) un PDF compilato fuori dal programma viene riconosciuto, messo in
-   `Moduli/` e i suoi dati vengono proposti per la pratica. Vengono letti anche i **moduli
-   dinamici del portale** (PDF creati con Adobe LiveCycle/XFA, quelli che negli altri
-   programmi mostrano "Please wait…"): i dati si leggono, ma il file si modifica solo con
-   Adobe Acrobat/Reader; se lo correggi e lo salvi, Fascicolo rilegge i dati.
-8. **Consegna**: scegli i file, il programma li copia in `Consegne/<data>` con il testo del
-   messaggio e, per PEC/PEO, apre una nuova mail già indirizzata. Firma digitalmente i PDF
-   prima di allegarli.
+Il programma ha tre schede.
+
+1. **Dati pratica**: i dati comuni (titolare, immobile, tecnici, impresa…). Si salvano da soli.
+   Progettisti, imprese e titolari ricorrenti si salvano in **rubrica**.
+2. **Moduli**: premi **Compila un modulo**, scegli il modulo e si apre nel tuo programma PDF già
+   compilato con i dati della pratica. Completalo e salvalo: Fascicolo legge i dati nuovi e li
+   usa per gli altri moduli. Ogni modulo della pratica ha la sua riga con la casella che indica
+   dove è salvato, il pulsante **Scegli dove salvarlo…** (anche sul server) e **Apri**.
+   Se nel frattempo hai cambiato i dati della pratica, all'apertura il modulo viene aggiornato
+   (le parti scritte a mano nel PDF restano). Con **Carica un modulo già compilato…** porti
+   nella pratica un PDF fatto fuori dal programma, anche i vecchi moduli dinamici del portale.
+3. **Allegati**: qualsiasi file da tenere con la pratica (carte d'identità, patenti, codici
+   fiscali, visure, foto…). Si aggiungono col pulsante o trascinandoli; per ognuno puoi indicare
+   il tipo di documento e una nota. Vanno nella cartella `Allegati` della pratica; "Togli dalla
+   pratica" li sposta in `Allegati/_tolti` senza cancellarli.
+
+**Comuni** (barra a sinistra): elenco dei comuni con la PEC, usata nell'informativa privacy.
 
 ## Moduli
 Tutti i 17 moduli provinciali e i due modelli ISTAT (RE e NRE) sono già collegati ai dati della
