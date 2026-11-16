@@ -60,12 +60,36 @@ def scarica(url, nome, avanzamento=None):
 
 
 def avvia_setup(setup):
-    """Lancia il setup in modalità silenziosa (/S) dopo qualche secondo, il tempo che Fascicolo
-    si chiuda; a fine installazione il setup riapre il programma."""
+    """Prepara uno script che aspetta la chiusura VERA di Fascicolo (non un tempo fisso), poi lancia
+    il setup silenzioso nella stessa cartella in cui è installato; il setup riapre il programma.
+    Tutto viene annotato in %TEMP%\\fascicolo-aggiornamento.log."""
+    tmp = Path(tempfile.gettempdir())
+    log = tmp / "fascicolo-aggiornamento.log"
+    bat = tmp / "fascicolo-aggiorna.cmd"
+    pid = os.getpid()
+    cartella = Path(__file__).resolve().parent.parent
+    dest = f" /D={cartella}" if installato() else ""
+    righe = [
+        "@echo off",
+        "chcp 65001 >nul",
+        f'echo %date% %time% aggiornamento: attendo che Fascicolo (processo {pid}) si chiuda > "{log}"',
+        "set n=0",
+        ":attendi",
+        f'tasklist /FI "PID eq {pid}" /NH 2>nul | find /I "python" >nul',
+        "if errorlevel 1 goto installa",
+        "set /a n+=1",
+        "if %n% geq 90 goto installa",
+        "ping -n 2 127.0.0.1 >nul",
+        "goto attendi",
+        ":installa",
+        "ping -n 2 127.0.0.1 >nul",
+        f'echo %date% %time% avvio "{setup}" /S{dest} >> "{log}"',
+        f'"{setup}" /S{dest}',
+        f'echo %date% %time% setup terminato, codice %errorlevel% >> "{log}"',
+    ]
+    bat.write_text("\r\n".join(righe) + "\r\n", encoding="utf-8")
     flags = 0
     if sys.platform.startswith("win"):
-        flags = (getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-                 | getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    comando = f'ping -n 4 127.0.0.1 >nul & "{setup}" /S'
-    subprocess.Popen(["cmd", "/c", comando], creationflags=flags, close_fds=True,
-                     cwd=os.path.dirname(str(setup)))
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    subprocess.Popen(["cmd", "/c", str(bat)], creationflags=flags, close_fds=True, cwd=str(tmp),
+                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

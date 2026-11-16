@@ -20,6 +20,8 @@ Unicode true
 Name "${NOME} ${VERSIONE}"
 OutFile "${USCITA}\Fascicolo-Setup-${VERSIONE}.exe"
 InstallDir "$LOCALAPPDATA\Programs\${NOME}"
+; se è già installato altrove, aggiorno quella cartella
+InstallDirRegKey HKCU "${CHIAVE}" "InstallLocation"
 ; per l'utente: niente permessi di amministratore, aggiornamenti silenziosi
 RequestExecutionLevel user
 SetCompressor /SOLID lzma

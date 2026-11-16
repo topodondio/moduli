@@ -1,4 +1,5 @@
 """Finestra principale di Fascicolo."""
+import os
 import shutil
 import urllib.parse
 from datetime import datetime
@@ -690,8 +691,17 @@ class _ControlloAggiornamenti(QObject):
             return
         prog.close()
         self.f.scheda_dati.salva_subito()
-        aggiornamenti.avvia_setup(setup)
-        QApplication.quit()
+        try:
+            aggiornamenti.avvia_setup(setup)
+        except Exception as e:  # noqa
+            QMessageBox.warning(self.f, "Aggiornamento", f"Non riesco ad avviare l'installazione:\n{e}\n\n"
+                                                          f"Puoi lanciarla a mano: {setup}")
+            return
+        # chiudo davvero (salvataggi e "pratica aperta" compresi): finché il programma è vivo
+        # i suoi file sono bloccati e l'installazione non potrebbe sostituirli
+        self.f.close()
+        QApplication.processEvents()
+        os._exit(0)
 
 
 class Finestra(QMainWindow):
