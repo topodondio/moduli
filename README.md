@@ -25,9 +25,10 @@ la sta usando. Comuni, rubrica e moduli insegnati stanno nell'archivio e valgono
 **Dai sorgenti** (per sviluppo): Python 3.11+, `pip install -r requirements.txt`, poi
 `python -m fascicolo` (o doppio clic su `avvia_windows.bat` / `avvia_mac.command`).
 
-**Nuova versione** (per chi mantiene il programma): aggiorna `fascicolo/__init__.py`, poi crea
-e carica un tag `vX.Y.Z`: GitHub costruisce l'installer e pubblica la release da solo
-(`.github/workflows/release.yml`).
+**Nuova versione** (per chi mantiene il programma): basta cambiare `__version__` in
+`fascicolo/__init__.py` e caricare la modifica su `main`: GitHub costruisce l'installer e
+pubblica la release `vX.Y.Z` da solo (`.github/workflows/release.yml`, circa 5 minuti).
+Si può anche lanciare a mano da *Actions › Installer Windows › Run workflow*.
 
 ## Come si usa
 Il programma ha tre schede.

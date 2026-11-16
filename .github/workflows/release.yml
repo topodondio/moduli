@@ -1,40 +1,54 @@
-# Crea l'installer di Windows e lo pubblica come release quando si carica un tag "v*" (es. v0.6.0).
-# Il programma controlla le release da menu ? › Controlla aggiornamenti.
+# Crea l'installer di Windows e lo pubblica come release.
+# Parte da solo quando su main cambia la versione in fascicolo/__init__.py (se la release
+# vX.Y.Z non esiste ancora), oppure a mano da Actions › "Installer Windows" › Run workflow.
+# Il programma trova le release da menu ? › Controlla aggiornamenti.
 name: Installer Windows
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+    paths: ["fascicolo/__init__.py", ".github/workflows/release.yml", "installer/**"]
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: installer
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Versione dal tag
+      - name: Versione
         id: ver
         shell: pwsh
         run: |
-          $v = "${{ github.ref_name }}" -replace '^v',''
-          if ($v -notmatch '^\d') { $v = (Select-String -Path fascicolo/__init__.py -Pattern '"(.+)"').Matches[0].Groups[1].Value }
-          (Get-Content fascicolo/__init__.py) -replace '__version__ = ".*"', "__version__ = `"$v`"" | Set-Content fascicolo/__init__.py
+          $v = (Select-String -Path fascicolo/__init__.py -Pattern '__version__ = "(.+)"').Matches[0].Groups[1].Value
           "version=$v" >> $env:GITHUB_OUTPUT
+          gh release view "v$v" --repo "${{ github.repository }}" *> $null
+          if ($LASTEXITCODE -eq 0) { "esiste=1" >> $env:GITHUB_OUTPUT; Write-Host "La release v$v esiste già: niente da fare" }
+          else { "esiste=0" >> $env:GITHUB_OUTPUT }
+          exit 0
+
+      - uses: actions/setup-python@v5
+        if: steps.ver.outputs.esiste == '0'
+        with:
+          python-version: "3.12"
 
       - name: Librerie
+        if: steps.ver.outputs.esiste == '0'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt pyinstaller
 
       - name: Programma (PyInstaller)
+        if: steps.ver.outputs.esiste == '0'
         run: >
           pyinstaller --noconfirm --windowed --name Fascicolo
           --icon assets/fascicolo.ico
@@ -42,19 +56,25 @@ jobs:
           Fascicolo.pyw
 
       - name: Installer (Inno Setup)
+        if: steps.ver.outputs.esiste == '0'
         shell: pwsh
         run: |
           if (-not (Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion=${{ steps.ver.outputs.version }} installer\Fascicolo.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Pubblica la release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: steps.ver.outputs.esiste == '0'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Fascicolo ${{ steps.ver.outputs.version }}
           files: dist/Fascicolo-Setup-${{ steps.ver.outputs.version }}.exe
           generate_release_notes: true
 
       - name: Installer come artifact
+        if: steps.ver.outputs.esiste == '0'
         uses: actions/upload-artifact@v4
         with:
           name: Fascicolo-Setup-${{ steps.ver.outputs.version }}
