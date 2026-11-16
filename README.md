@@ -24,11 +24,18 @@ la sta usando. Comuni, rubrica e moduli insegnati stanno nell'archivio e valgono
 
 **Dai sorgenti** (per sviluppo): Python 3.11+, `pip install -r requirements.txt`, poi
 `python -m fascicolo` (o doppio clic su `avvia_windows.bat` / `avvia_mac.command`).
+Serve Windows 10 (1903 o successivo) o Windows 11.
 
-**Nuova versione** (per chi mantiene il programma): basta cambiare `__version__` in
-`fascicolo/__init__.py` e caricare la modifica su `main`: GitHub costruisce l'installer e
-pubblica la release `vX.Y.Z` da solo (`.github/workflows/release.yml`, circa 5 minuti).
-Si può anche lanciare a mano da *Actions › Installer Windows › Run workflow*.
+**Creare l'installer**: `python installer/crea_installer.py` crea
+`dist/Fascicolo-Setup-x.y.z.exe`. Funziona anche da Linux o Mac: scarica un Python per Windows
+già pronto, ci mette PySide6, PyMuPDF e il programma e crea l'installer con NSIS
+(`apt install nsis`; su Windows https://nsis.sourceforge.io).
+
+**Pubblicare una nuova versione** (così le postazioni la trovano in *? › Controlla
+aggiornamenti*): cambia `__version__` in `fascicolo/__init__.py`, crea l'installer e su GitHub
+fai *Releases › Draft a new release* con il tag `vX.Y.Z`, allegando il file `.exe`.
+Se GitHub Actions è attivo sull'account, la release la crea da solo al push su `main`
+(`.github/workflows/release.yml`).
 
 ## Come si usa
 Il programma ha tre schede.

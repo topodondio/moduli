@@ -1,7 +1,7 @@
 # Crea l'installer di Windows e lo pubblica come release.
 # Parte da solo quando su main cambia la versione in fascicolo/__init__.py (se la release
 # vX.Y.Z non esiste ancora), oppure a mano da Actions › "Installer Windows" › Run workflow.
-# Il programma trova le release da menu ? › Controlla aggiornamenti.
+# L'installer si può creare anche senza GitHub:  python installer/crea_installer.py
 name: Installer Windows
 
 on:
@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -27,41 +27,25 @@ jobs:
 
       - name: Versione
         id: ver
-        shell: pwsh
         run: |
-          $v = (Select-String -Path fascicolo/__init__.py -Pattern '__version__ = "(.+)"').Matches[0].Groups[1].Value
-          "version=$v" >> $env:GITHUB_OUTPUT
-          gh release view "v$v" --repo "${{ github.repository }}" *> $null
-          if ($LASTEXITCODE -eq 0) { "esiste=1" >> $env:GITHUB_OUTPUT; Write-Host "La release v$v esiste già: niente da fare" }
-          else { "esiste=0" >> $env:GITHUB_OUTPUT }
-          exit 0
+          v=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' fascicolo/__init__.py)
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if gh release view "v$v" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "esiste=1" >> "$GITHUB_OUTPUT"; echo "La release v$v esiste già: niente da fare"
+          else
+            echo "esiste=0" >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: actions/setup-python@v5
         if: steps.ver.outputs.esiste == '0'
         with:
           python-version: "3.12"
 
-      - name: Librerie
+      - name: Installer
         if: steps.ver.outputs.esiste == '0'
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt pyinstaller
-
-      - name: Programma (PyInstaller)
-        if: steps.ver.outputs.esiste == '0'
-        run: >
-          pyinstaller --noconfirm --windowed --name Fascicolo
-          --icon assets/fascicolo.ico
-          --add-data "moduli;moduli" --add-data "mappature;mappature" --add-data "assets;assets"
-          Fascicolo.pyw
-
-      - name: Installer (Inno Setup)
-        if: steps.ver.outputs.esiste == '0'
-        shell: pwsh
-        run: |
-          if (-not (Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion=${{ steps.ver.outputs.version }} installer\Fascicolo.iss
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          sudo apt-get update -q && sudo apt-get install -y -q nsis
+          python installer/crea_installer.py
 
       - name: Pubblica la release
         if: steps.ver.outputs.esiste == '0'
@@ -72,10 +56,3 @@ jobs:
           name: Fascicolo ${{ steps.ver.outputs.version }}
           files: dist/Fascicolo-Setup-${{ steps.ver.outputs.version }}.exe
           generate_release_notes: true
-
-      - name: Installer come artifact
-        if: steps.ver.outputs.esiste == '0'
-        uses: actions/upload-artifact@v4
-        with:
-          name: Fascicolo-Setup-${{ steps.ver.outputs.version }}
-          path: dist/Fascicolo-Setup-*.exe

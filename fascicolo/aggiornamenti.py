@@ -16,8 +16,9 @@ API = f"https://api.github.com/repos/{REPO}/releases/latest"
 
 
 def installato():
-    """True se gira il programma installato (exe), False se gira dai sorgenti Python."""
-    return bool(getattr(sys, "frozen", False))
+    """True se gira il programma installato col setup, False se gira dai sorgenti Python."""
+    radice = Path(__file__).resolve().parent.parent
+    return bool(getattr(sys, "frozen", False)) or (radice / "installato.txt").exists()
 
 
 def _numeri(v):
@@ -59,9 +60,12 @@ def scarica(url, nome, avanzamento=None):
 
 
 def avvia_setup(setup):
-    """Lancia il setup in modalità silenziosa: chiude Fascicolo, aggiorna e lo riapre."""
+    """Lancia il setup in modalità silenziosa (/S) dopo qualche secondo, il tempo che Fascicolo
+    si chiuda; a fine installazione il setup riapre il programma."""
     flags = 0
     if sys.platform.startswith("win"):
-        flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-    subprocess.Popen([str(setup), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS"],
-                     creationflags=flags, close_fds=True, cwd=os.path.dirname(str(setup)))
+        flags = (getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+                 | getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    comando = f'ping -n 4 127.0.0.1 >nul & "{setup}" /S'
+    subprocess.Popen(["cmd", "/c", comando], creationflags=flags, close_fds=True,
+                     cwd=os.path.dirname(str(setup)))

@@ -4,6 +4,11 @@ import sys
 if sys.platform.startswith("win"):
     # niente modalità scura automatica di Windows: l'interfaccia ha i suoi colori
     os.environ.setdefault("QT_QPA_PLATFORM", "windows:darkmode=0")
+    try:  # icona di Fascicolo (e non di Python) nella barra delle applicazioni
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("topodondio.Fascicolo")
+    except Exception:
+        pass
 
 from PySide6.QtCore import QTranslator, QLibraryInfo, QLocale
 from PySide6.QtGui import QPalette, QColor
@@ -44,6 +49,10 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Fascicolo")
     app.setStyle("Fusion")
+    from PySide6.QtGui import QIcon
+    from .core import APP_DIR
+    if (APP_DIR / "assets" / "fascicolo.ico").exists():
+        app.setWindowIcon(QIcon(str(APP_DIR / "assets" / "fascicolo.ico")))
     app.setPalette(tavolozza_chiara())
     tr = QTranslator(app)  # pulsanti standard in italiano (Sì/No/Annulla)
     if tr.load(QLocale("it_IT"), "qtbase", "_", QLibraryInfo.path(QLibraryInfo.TranslationsPath)):
