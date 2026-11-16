@@ -18,21 +18,25 @@ secondo le regole di ogni comune. Non usa il browser né internet.
    Consegne, Ricevute.
 3. **Dati pratica**: compila quello che sai; si salva da solo. Progettisti, imprese e
    titolari ricorrenti si salvano in **rubrica** e si richiamano con un clic.
-4. **Moduli › Compila**: il programma chiede solo i dati che mancano a quel modulo, li salva
+4. **Cartella dei moduli**: di default i moduli compilati vanno in `Moduli/` dentro la
+   pratica, ma per ogni pratica puoi sceglierne un'altra (anche sul server, ad esempio
+   nella cartella del progetto): alla creazione della pratica oppure da *Moduli › Cambia
+   cartella…*, che sposta lì anche i moduli già compilati.
+5. **Moduli › Compila**: il programma chiede solo i dati che mancano a quel modulo, li salva
    nella pratica e genera il PDF in `Moduli/`. Il modulo successivo li trova già.
    Se correggi un dato, **Ricompila tutti** aggiorna i moduli già fatti (le versioni vecchie
    vanno in `Moduli/_precedenti`).
-5. **Scrivere nei PDF**: con *Apri PDF* puoi compilare o correggere il modulo nel tuo lettore
+6. **Scrivere nei PDF**: con *Apri PDF* puoi compilare o correggere il modulo nel tuo lettore
    (Acrobat, ecc.). Quando salvi, Fascicolo legge i dati nuovi e ti mostra cosa è cambiato:
    scegli cosa salvare nella pratica e, se vuoi, aggiorna subito anche gli altri moduli.
    Quando ricompili un modulo, le spunte e i campi che hai scritto a mano nel PDF restano.
-6. **Moduli già compilati**: con *Carica modulo compilato…* (o trascinandolo da *Documenti ›
+7. **Moduli già compilati**: con *Carica modulo compilato…* (o trascinandolo da *Documenti ›
    Aggiungi file*) un PDF compilato fuori dal programma viene riconosciuto, messo in
    `Moduli/` e i suoi dati vengono proposti per la pratica. Vengono letti anche i **moduli
    dinamici del portale** (PDF creati con Adobe LiveCycle/XFA, quelli che negli altri
    programmi mostrano "Please wait…"): i dati si leggono, ma il file si modifica solo con
    Adobe Acrobat/Reader; se lo correggi e lo salvi, Fascicolo rilegge i dati.
-7. **Consegna**: scegli i file, il programma li copia in `Consegne/<data>` con il testo del
+8. **Consegna**: scegli i file, il programma li copia in `Consegne/<data>` con il testo del
    messaggio e, per PEC/PEO, apre una nuova mail già indirizzata. Firma digitalmente i PDF
    prima di allegarli.
 

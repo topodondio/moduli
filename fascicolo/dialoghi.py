@@ -40,12 +40,31 @@ class NuovaPratica(QDialog):
         self.comune.addItems([""] + comuni)
         f.addRow("Nome pratica", self.nome)
         f.addRow("Comune", self.comune)
+        h = QHBoxLayout()
+        self.cartella = QLineEdit()
+        self.cartella.setPlaceholderText("Moduli (dentro la cartella della pratica)")
+        b = QPushButton("Sfoglia…")
+        b.clicked.connect(self._sfoglia)
+        h.addWidget(self.cartella, 1)
+        h.addWidget(b)
+        f.addRow("Cartella dei moduli", h)
         lay.addLayout(f)
-        n = QLabel("Verrà creata una cartella con le sottocartelle Moduli, Elaborati, Allegati, Consegne e Ricevute.")
+        n = QLabel("Verrà creata una cartella con le sottocartelle Moduli, Elaborati, Allegati, Consegne e Ricevute. "
+                   "Se vuoi i moduli compilati in un'altra cartella (ad esempio quella del progetto sul server), "
+                   "sceglila qui: si può cambiare anche dopo dalla scheda Moduli.")
         n.setObjectName("nota")
         n.setWordWrap(True)
         lay.addWidget(n)
         lay.addWidget(_bottoni(self, "Crea"))
+
+    def _sfoglia(self):
+        from PySide6.QtWidgets import QFileDialog
+        d = QFileDialog.getExistingDirectory(self, "Cartella in cui salvare i moduli della pratica")
+        if d:
+            self.cartella.setText(d)
+
+    def cartella_moduli(self):
+        return self.cartella.text().strip()
 
     def accept(self):
         if not self.nome.text().strip():
