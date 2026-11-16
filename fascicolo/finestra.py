@@ -606,8 +606,14 @@ class _ControlloAggiornamenti(QObject):
         threading.Thread(target=lavoro, daemon=True).start()
 
     def _errore(self, msg, silenzioso):
-        if not silenzioso:
-            QMessageBox.warning(self.f, "Aggiornamenti", f"Non riesco a controllare gli aggiornamenti:\n{msg}")
+        if silenzioso:
+            return
+        if "404" in msg:
+            QMessageBox.information(self.f, "Aggiornamenti",
+                                    "Su GitHub non c'è ancora nessuna versione pubblicata di Fascicolo.")
+        else:
+            QMessageBox.warning(self.f, "Aggiornamenti",
+                                f"Non riesco a controllare gli aggiornamenti (manca la connessione?):\n{msg}")
 
     def _trovato(self, rel, silenzioso):
         if not aggiornamenti.piu_nuova(rel["versione"]):
