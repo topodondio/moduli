@@ -57,12 +57,25 @@ def apri_con_sistema(path):
         os.system(f'xdg-open "{path}" >/dev/null 2>&1 &')
 
 
+def utente():
+    """Nome di chi usa il programma su questa postazione (utente @ computer)."""
+    import getpass
+    import platform
+    try:
+        u = getpass.getuser()
+    except Exception:
+        u = "utente"
+    return f"{u}@{platform.node() or 'pc'}"
+
+
 # --------------------------------------------------------------------------- config
 
+ARCHIVIO_LOCALE = str(Path.home() / "Documents" / "Pratiche")
+
+
 def carica_config():
-    cfg = leggi_json(CONFIG_FILE, {})
-    cfg.setdefault("archivio", str(Path.home() / "Documents" / "Pratiche"))
-    return cfg
+    """Impostazioni di questa postazione. 'archivio' manca al primo avvio: lo chiede l'interfaccia."""
+    return leggi_json(CONFIG_FILE, {})
 
 
 def salva_config(cfg):
@@ -71,10 +84,47 @@ def salva_config(cfg):
 
 # --------------------------------------------------------------------------- pratica
 
+def _copia(x):
+    return json.loads(json.dumps(x))
+
+
+def _unisci(base, mio, disco):
+    """Unione a tre vie: dove ho cambiato io vince il mio valore, altrimenti quello sul disco
+    (che può contenere le modifiche fatte da un collega su un'altra postazione)."""
+    if isinstance(mio, dict) and isinstance(disco, dict) and isinstance(base, dict):
+        out = {}
+        for k in set(mio) | set(disco) | set(base):
+            b, m, d = base.get(k, _MANCA), mio.get(k, _MANCA), disco.get(k, _MANCA)
+            if m == b:
+                v = d
+            elif d == b:
+                v = m
+            elif isinstance(m, dict) and isinstance(d, dict):
+                v = _unisci(b if isinstance(b, dict) else {}, m, d)
+            else:
+                v = m
+            if v is not _MANCA:
+                out[k] = v
+        return out
+    return disco if mio == base else mio
+
+
+_MANCA = object()
+
+
+def _mtime(p):
+    try:
+        return Path(p).stat().st_mtime
+    except OSError:
+        return 0.0
+
+
 class Pratica:
     def __init__(self, cartella, dati=None):
         self.cartella = Path(cartella)
         self.dati = dati if dati is not None else leggi_json(self.cartella / FILE_PRATICA, {})
+        self._base = _copia(self.dati)
+        self._mtime_disco = _mtime(self.cartella / FILE_PRATICA)
         self.dati.setdefault("_valori", {})
         self.dati.setdefault("_moduli", {})
         self.dati.setdefault("_consegne", [])
@@ -194,9 +244,64 @@ class Pratica:
     def nome(self):
         return self.valori.get("pratica.nome") or self.cartella.name
 
+    def _sostituisci(self, nuovi):
+        self.dati.clear()
+        self.dati.update(nuovi)
+        for k, v in (("_valori", {}), ("_moduli", {}), ("_consegne", []), ("_creata", oggi())):
+            self.dati.setdefault(k, v)
+
+    def sincronizza(self, forza=False):
+        """Porta dentro le modifiche salvate da altre postazioni. Ritorna True se è cambiato qualcosa."""
+        f = self.cartella / FILE_PRATICA
+        mt = _mtime(f)
+        if not mt or (mt == self._mtime_disco and not forza):
+            return False
+        disco = leggi_json(f, None)
+        if disco is None or disco.get("_salvataggio") == self._base.get("_salvataggio"):
+            self._mtime_disco = mt
+            return False
+        prima = _copia(self.dati)
+        self._sostituisci(_unisci(self._base, self.dati, disco))
+        self._base = _copia(disco)
+        self._mtime_disco = mt
+        return self.dati != prima
+
     def salva(self):
+        self.sincronizza(forza=True)  # prima unisco eventuali modifiche dei colleghi
+        self.dati["_salvataggio"] = f"{time.time():.6f}-{os.getpid()}-{utente()}"
         self.dati["_modificata"] = datetime.now().strftime("%d/%m/%Y %H:%M")
+        self.dati["_modificata_da"] = utente()
         scrivi_json(self.cartella / FILE_PRATICA, self.dati)
+        self._base = _copia(self.dati)
+        self._mtime_disco = _mtime(self.cartella / FILE_PRATICA)
+
+    # chi ha aperta la pratica ------------------------------------------------
+    def _file_presenza(self):
+        nome = re.sub(r"[^\w.-]+", "_", utente())
+        return self.cartella / f".in_uso_{nome}.json"
+
+    def segna_aperta(self):
+        try:
+            scrivi_json(self._file_presenza(), {"utente": utente(), "ora": time.time()})
+        except OSError:
+            pass
+
+    def segna_chiusa(self):
+        try:
+            self._file_presenza().unlink()
+        except OSError:
+            pass
+
+    def aperta_da_altri(self, minuti=3):
+        mio = self._file_presenza().name
+        out = []
+        for f in self.cartella.glob(".in_uso_*.json"):
+            if f.name == mio:
+                continue
+            d = leggi_json(f, {})
+            if time.time() - float(d.get("ora", 0)) < minuti * 60:
+                out.append(d.get("utente", f.stem[8:]))
+        return out
 
     def registra_modulo(self, mod_id, file_out, importato=False):
         info = {"file": str(Path(file_out).name), "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
@@ -223,6 +328,18 @@ class Archivio:
             if d.is_dir() and (d / FILE_PRATICA).exists():
                 out.append(Pratica(d))
         return out
+
+    def impronta(self):
+        """Cambia quando un collega crea, rinomina, elimina o modifica una pratica."""
+        out = []
+        try:
+            for d in self.radice.iterdir():
+                f = d / FILE_PRATICA
+                if d.is_dir() and f.exists():
+                    out.append((d.name, _mtime(f)))
+        except OSError:
+            pass
+        return tuple(sorted(out))
 
     def nuova(self, nome, comune=""):
         anno = datetime.now().year

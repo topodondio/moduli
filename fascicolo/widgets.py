@@ -57,6 +57,11 @@ QTableWidget, QTreeView {{ background: #ffffff; border: 1px solid #dfe2dc; borde
 QHeaderView::section {{ background: #f4f5f2; border: none; border-bottom: 1px solid #dfe2dc; padding: 6px; color: #5d6a66; font-weight: 600; }}
 QScrollArea {{ border: none; background: transparent; }}
 QCheckBox {{ color: #1f2b2e; spacing: 8px; }}
+QMenuBar {{ background: #1f2b2e; color: #dfe7e5; padding: 2px 6px; }}
+QMenuBar::item {{ background: transparent; padding: 4px 10px; border-radius: 4px; }}
+QMenuBar::item:selected {{ background: #2c3a3d; }}
+QMenu::item {{ padding: 6px 22px; }}
+QMenu::item:selected {{ background: #e3efec; color: #1f2b2e; }}
 QLabel#numero {{ background: #e3efec; color: #2f7d6d; font-weight: 700; border-radius: 6px; padding: 5px 0; }}
 QLabel#presa {{ color: #9aa39f; font-size: 18px; padding: 0 2px; }}
 #elencoModuli {{ background: #ffffff; border: 1px solid #dfe2dc; border-radius: 8px; outline: 0; padding: 6px; }}

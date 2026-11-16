@@ -4,12 +4,30 @@ Programma desktop (Windows e Mac) per gestire le pratiche edilizie: scheda dati 
 pratica, compilazione automatica dei moduli PDF provinciali, archivio per pratica e consegna
 secondo le regole di ogni comune. Non usa il browser né internet.
 
-## Avvio
-- **Windows**: installa Python 3.11+ da python.org (spunta "Add to PATH"), poi doppio clic su
-  `avvia_windows.bat`. La prima volta installa da solo le librerie (PySide6, PyMuPDF).
-- **Mac**: doppio clic su `avvia_mac.command` (la prima volta: tasto destro › Apri).
-- **Exe autonomo per lo studio**: `crea_exe_windows.bat` crea `dist\Fascicolo\Fascicolo.exe`,
-  da copiare sugli altri PC senza installare Python.
+## Installazione
+Scarica **Fascicolo-Setup-x.y.z.exe** dall'ultima release
+(https://github.com/topodondio/moduli/releases/latest) e aprilo: si installa per l'utente,
+senza permessi di amministratore, con collegamento nel menu Start (e, a scelta, sul desktop).
+Windows può mostrare l'avviso "PC protetto da Windows" perché il programma non è firmato:
+*Ulteriori informazioni › Esegui comunque*.
+
+**Aggiornamenti**: menu **? › Controlla aggiornamenti…**. Se c'è una versione nuova, Fascicolo
+la scarica, si chiude, si aggiorna e si riapre; le pratiche non vengono toccate. All'avvio il
+programma controlla da solo e lo segnala in basso nella barra di stato.
+
+**Più postazioni**: al primo avvio Fascicolo chiede dov'è l'archivio. Scegliendo su tutti i
+computer la **stessa cartella condivisa sul server**, l'elenco delle pratiche è unico per tutto
+lo studio, con dati, moduli e allegati di ogni pratica. L'elenco e la pratica aperta si
+aggiornano da soli ogni pochi secondi; se due persone lavorano sulla stessa pratica le
+modifiche vengono unite (se cambiano lo stesso dato vale l'ultima) e in alto compare chi altro
+la sta usando. Comuni, rubrica e moduli insegnati stanno nell'archivio e valgono per tutti.
+
+**Dai sorgenti** (per sviluppo): Python 3.11+, `pip install -r requirements.txt`, poi
+`python -m fascicolo` (o doppio clic su `avvia_windows.bat` / `avvia_mac.command`).
+
+**Nuova versione** (per chi mantiene il programma): aggiorna `fascicolo/__init__.py`, poi crea
+e carica un tag `vX.Y.Z`: GitHub costruisce l'installer e pubblica la release da solo
+(`.github/workflows/release.yml`).
 
 ## Come si usa
 Il programma ha tre schede.

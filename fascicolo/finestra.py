@@ -4,15 +4,15 @@ import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QSize, QTimer, QDir, QUrl, QFileSystemWatcher, QEvent
-from PySide6.QtGui import QDesktopServices, QIcon, QCursor
-from PySide6.QtWidgets import (QMainWindow, QToolButton, QDialog, QComboBox, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QListWidget,
+from PySide6.QtCore import Qt, QSize, QTimer, Signal, QObject, QDir, QUrl, QFileSystemWatcher, QEvent
+from PySide6.QtGui import QDesktopServices, QIcon, QCursor, QAction
+from PySide6.QtWidgets import (QMainWindow, QApplication, QToolButton, QDialog, QComboBox, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QListWidget,
                                QListWidgetItem, QPushButton, QTabWidget, QStackedWidget, QScrollArea, QFormLayout,
                                QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox,
                                QFileDialog, QTreeView, QFileSystemModel, QInputDialog, QCheckBox, QPlainTextEdit,
                                QGroupBox, QSplitter, QSizePolicy)
 
-from . import core, xfa
+from . import core, xfa, aggiornamenti, __version__
 from .schema import SEZIONI, CAMPI
 from .widgets import Campo
 from .dialoghi import NuovaPratica, DatiMancanti, Comuni, SceltaRubrica, InsegnaModulo, AggiornaDati
@@ -582,14 +582,95 @@ class SchedaAllegati(QWidget):
 
 # =========================================================================== finestra
 
+class _ControlloAggiornamenti(QObject):
+    """Controlla GitHub in un thread separato e propone l'aggiornamento."""
+    trovato = Signal(object, bool)
+    errore = Signal(str, bool)
+
+    def __init__(self, finestra):
+        super().__init__(finestra)
+        self.f = finestra
+        self.trovato.connect(self._trovato)
+        self.errore.connect(self._errore)
+
+    def avvia(self, silenzioso):
+        import threading
+
+        def lavoro():
+            try:
+                self.trovato.emit(aggiornamenti.ultima_release(), silenzioso)
+            except Exception as e:  # noqa – niente rete, repo privato, limiti GitHub…
+                self.errore.emit(str(e), silenzioso)
+        if not silenzioso:
+            self.f.stato("Controllo aggiornamenti…")
+        threading.Thread(target=lavoro, daemon=True).start()
+
+    def _errore(self, msg, silenzioso):
+        if not silenzioso:
+            QMessageBox.warning(self.f, "Aggiornamenti", f"Non riesco a controllare gli aggiornamenti:\n{msg}")
+
+    def _trovato(self, rel, silenzioso):
+        if not aggiornamenti.piu_nuova(rel["versione"]):
+            if not silenzioso:
+                QMessageBox.information(self.f, "Aggiornamenti", f"Fascicolo {__version__} è già la versione più recente.")
+            return
+        if silenzioso:
+            self.f.stato(f"È disponibile Fascicolo {rel['versione']}: menu ? › Controlla aggiornamenti")
+            return
+        note = rel["note"].strip()
+        testo = (f"È disponibile <b>Fascicolo {rel['versione']}</b> (hai la {__version__}).<br><br>"
+                 + (note.replace("\n", "<br>")[:1500] + "<br><br>" if note else ""))
+        if not aggiornamenti.installato() or not rel["setup"]:
+            testo += "Scarica il nuovo programma di installazione dalla pagina del progetto."
+            if QMessageBox.question(self.f, "Aggiornamento disponibile", testo + "<br><br>Apro la pagina?") == QMessageBox.Yes:
+                QDesktopServices.openUrl(QUrl(rel["pagina"]))
+            return
+        if QMessageBox.question(self.f, "Aggiornamento disponibile",
+                                testo + "Vuoi aggiornare adesso? Fascicolo si chiude, si aggiorna e si riapre "
+                                        "(le pratiche non vengono toccate).") != QMessageBox.Yes:
+            return
+        from PySide6.QtWidgets import QProgressDialog
+        prog = QProgressDialog("Scarico l'aggiornamento…", "Annulla", 0, 100, self.f)
+        prog.setWindowTitle("Aggiornamento")
+        prog.setWindowModality(Qt.WindowModal)
+        prog.show()
+        annullato = {"si": False}
+
+        def avanz(letti, tot):
+            if tot:
+                prog.setValue(int(letti * 100 / tot))
+            QApplication.processEvents()
+            if prog.wasCanceled():
+                annullato["si"] = True
+                raise RuntimeError("annullato")
+        try:
+            setup = aggiornamenti.scarica(rel["setup"], rel["nome_setup"], avanz)
+        except Exception as e:  # noqa
+            prog.close()
+            if not annullato["si"]:
+                QMessageBox.warning(self.f, "Aggiornamento", f"Download non riuscito:\n{e}")
+            return
+        prog.close()
+        self.f.scheda_dati.salva_subito()
+        aggiornamenti.avvia_setup(setup)
+        QApplication.quit()
+
+
 class Finestra(QMainWindow):
     def __init__(self):
         super().__init__()
         self.cfg = core.carica_config()
+        if not self.cfg.get("archivio"):
+            self.cfg["archivio"] = self._chiedi_archivio()
+            core.salva_config(self.cfg)
         self.archivio = core.Archivio(self.cfg["archivio"])
         self.pratica = None
-        self.setWindowTitle("Fascicolo – pratiche edilizie")
+        self.setWindowTitle(f"Fascicolo {__version__} – pratiche edilizie")
+        icona = core.APP_DIR / "assets" / "fascicolo.png"
+        if icona.exists():
+            self.setWindowIcon(QIcon(str(icona)))
         self.resize(1320, 840)
+        self._menu()
 
         centro = QWidget()
         root = QHBoxLayout(centro)
@@ -658,6 +739,10 @@ class Finestra(QMainWindow):
         self.info.setObjectName("infoPratica")
         col.addWidget(self.nome)
         col.addWidget(self.info)
+        self.presenza = QLabel()
+        self.presenza.setObjectName("avviso")
+        self.presenza.setVisible(False)
+        col.addWidget(self.presenza)
         il.addLayout(col, 1)
         self.b_cartella = bottone("Apri cartella", lambda: self.pratica and core.apri_con_sistema(self.pratica.cartella))
         il.addWidget(self.b_cartella)
@@ -684,7 +769,14 @@ class Finestra(QMainWindow):
         self.t_controllo.setInterval(1500)
         self.t_controllo.timeout.connect(self.controlla_pdf_modificati)
         self._in_controllo = False
+        self._impronta = None
+        self.t_sync = QTimer(self)
+        self.t_sync.setInterval(8000)
+        self.t_sync.timeout.connect(self.sincronizza)
+        self.t_sync.start()
         self.ricarica_elenco()
+        self._agg = _ControlloAggiornamenti(self)
+        QTimer.singleShot(4000, lambda: self._agg.avvia(silenzioso=True))
 
     # ------------------------------------------------------------------ PDF scritti fuori dal programma
     def _sorveglia(self):
@@ -841,6 +933,7 @@ class Finestra(QMainWindow):
         self.statusBar().showMessage(msg, 6000)
 
     def ricarica_elenco(self, seleziona=None):
+        self._impronta = self.archivio.impronta()
         self.lbl_archivio.setText(str(self.archivio.radice))
         self.lista.blockSignals(True)
         self.lista.clear()
@@ -867,9 +960,13 @@ class Finestra(QMainWindow):
     def _seleziona(self, it, _prev=None):
         if self.pratica:
             self.scheda_dati.salva_subito()
+            if it and it.data(Qt.UserRole) == str(self.pratica.cartella):
+                return
+            self.pratica.segna_chiusa()
         if not it:
             return
         self.pratica = core.Pratica(it.data(Qt.UserRole))
+        self.pratica.segna_aperta()
         self.pratica.archivio = self.archivio
         self.tabs.setEnabled(True)
         self.scheda_dati.carica(self.pratica)
@@ -887,7 +984,15 @@ class Finestra(QMainWindow):
         tit = p.get("societa.denominazione") if p.get("titolare.tipo") == "Società" else \
             f"{p.get('titolare.cognome')} {p.get('titolare.nome')}".strip()
         parti = [x for x in [p.get("pratica.comune"), tit, p.cartella.name] if x]
+        if p.dati.get("_modificata"):
+            parti.append(f"modificata il {p.dati['_modificata']}"
+                         + (f" da {p.dati['_modificata_da'].split('@')[0]}" if p.dati.get("_modificata_da") else ""))
         self.info.setText("  ·  ".join(parti))
+        altri = p.aperta_da_altri()
+        self.presenza.setVisible(bool(altri))
+        if altri:
+            self.presenza.setText("Aperta in questo momento anche da: " + ", ".join(altri)
+                                  + ". Le modifiche di entrambi vengono unite; se cambiate lo stesso dato vale l'ultima.")
 
     def _cambio_tab(self, i):
         if not self.pratica:
@@ -1020,4 +1125,81 @@ class Finestra(QMainWindow):
 
     def closeEvent(self, e):
         self.scheda_dati.salva_subito()
+        if self.pratica:
+            self.pratica.segna_chiusa()
         super().closeEvent(e)
+
+    # ------------------------------------------------------------------ più postazioni
+    def _chiedi_archivio(self):
+        r = QMessageBox(self)
+        r.setWindowTitle("Archivio delle pratiche")
+        r.setIcon(QMessageBox.Question)
+        r.setText("Dove si trova l'archivio delle pratiche?\n\n"
+                  "Per avere lo stesso elenco su tutte le postazioni dello studio scegli la cartella condivisa "
+                  "sul server (la stessa per tutti). Si può cambiare in ogni momento da «Cartella archivio…».")
+        b_server = r.addButton("Scegli la cartella condivisa…", QMessageBox.AcceptRole)
+        r.addButton("Solo su questo computer", QMessageBox.RejectRole)
+        r.exec()
+        if r.clickedButton() is b_server:
+            d = QFileDialog.getExistingDirectory(self, "Cartella condivisa dell'archivio pratiche")
+            if d:
+                return d
+        return core.ARCHIVIO_LOCALE
+
+    def sincronizza(self):
+        """Ogni pochi secondi: elenco pratiche e pratica aperta allineati con le altre postazioni."""
+        if self._in_controllo or QApplication.activeModalWidget():
+            return
+        try:
+            if self.archivio.impronta() != self._impronta:
+                sel = self.pratica.cartella if self.pratica else None
+                if sel and not sel.exists():  # rinominata o eliminata da un collega
+                    self.pratica = None
+                    self.tabs.setEnabled(False)
+                    self.nome.setText("Nessuna pratica selezionata")
+                    self.info.setText("La pratica è stata rinominata o eliminata da un'altra postazione.")
+                    self.presenza.setVisible(False)
+                    sel = None
+                self.lista.blockSignals(True)
+                self.ricarica_elenco()
+                if sel:
+                    for i in range(self.lista.count()):
+                        if self.lista.item(i).data(Qt.UserRole) == str(sel):
+                            self.lista.setCurrentRow(i)
+                self.lista.blockSignals(False)
+            if self.pratica:
+                self.pratica.segna_aperta()
+                if not self.scheda_dati.timer.isActive() and not self._sto_scrivendo() and self.pratica.sincronizza():
+                    self.scheda_dati.carica(self.pratica)
+                    w = self.tabs.currentWidget()
+                    if w is not self.scheda_dati:
+                        w.carica(self.pratica)
+                    self.stato("Aggiornata con le modifiche fatte da un'altra postazione")
+                self.aggiorna_intestazione()
+                self.controlla_pdf_modificati()
+        except OSError:
+            self.stato("Archivio non raggiungibile (rete?): riprovo tra poco")
+
+    def _sto_scrivendo(self):
+        w = QApplication.focusWidget()
+        return bool(w and self.scheda_dati.isAncestorOf(w) and isinstance(w, (QLineEdit, QPlainTextEdit, QComboBox)))
+
+    # ------------------------------------------------------------------ menu ?
+    def _menu(self):
+        m = self.menuBar().addMenu("?")
+        a = QAction("Guida", self)
+        a.triggered.connect(lambda: QDesktopServices.openUrl(QUrl(aggiornamenti.PAGINA + "#readme")))
+        m.addAction(a)
+        a = QAction("Controlla aggiornamenti…", self)
+        a.triggered.connect(lambda: self._agg.avvia(silenzioso=False))
+        m.addAction(a)
+        m.addSeparator()
+        a = QAction("Informazioni su Fascicolo", self)
+        a.triggered.connect(self._informazioni)
+        m.addAction(a)
+
+    def _informazioni(self):
+        QMessageBox.about(self, "Informazioni su Fascicolo",
+                          f"<b>Fascicolo {__version__}</b><br>Pratiche edilizie e modulistica.<br><br>"
+                          f"Archivio: {self.archivio.radice}<br>Postazione: {core.utente()}<br><br>"
+                          f"<a href='{aggiornamenti.PAGINA}'>{aggiornamenti.PAGINA}</a>")

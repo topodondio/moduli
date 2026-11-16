@@ -1,0 +1,61 @@
+# Crea l'installer di Windows e lo pubblica come release quando si carica un tag "v*" (es. v0.6.0).
+# Il programma controlla le release da menu ? › Controlla aggiornamenti.
+name: Installer Windows
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Versione dal tag
+        id: ver
+        shell: pwsh
+        run: |
+          $v = "${{ github.ref_name }}" -replace '^v',''
+          if ($v -notmatch '^\d') { $v = (Select-String -Path fascicolo/__init__.py -Pattern '"(.+)"').Matches[0].Groups[1].Value }
+          (Get-Content fascicolo/__init__.py) -replace '__version__ = ".*"', "__version__ = `"$v`"" | Set-Content fascicolo/__init__.py
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Librerie
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Programma (PyInstaller)
+        run: >
+          pyinstaller --noconfirm --windowed --name Fascicolo
+          --icon assets/fascicolo.ico
+          --add-data "moduli;moduli" --add-data "mappature;mappature" --add-data "assets;assets"
+          Fascicolo.pyw
+
+      - name: Installer (Inno Setup)
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion=${{ steps.ver.outputs.version }} installer\Fascicolo.iss
+
+      - name: Pubblica la release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Fascicolo-Setup-${{ steps.ver.outputs.version }}.exe
+          generate_release_notes: true
+
+      - name: Installer come artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Fascicolo-Setup-${{ steps.ver.outputs.version }}
+          path: dist/Fascicolo-Setup-*.exe
