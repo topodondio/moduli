@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QDir, QUrl, QFileSystemWatcher, QEvent
 from PySide6.QtGui import QDesktopServices, QIcon
-from PySide6.QtWidgets import (QMainWindow, QDialog, QComboBox, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QListWidget,
+from PySide6.QtWidgets import (QMainWindow, QToolButton, QDialog, QComboBox, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QListWidget,
                                QListWidgetItem, QPushButton, QTabWidget, QStackedWidget, QScrollArea, QFormLayout,
                                QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox,
                                QFileDialog, QTreeView, QFileSystemModel, QInputDialog, QCheckBox, QPlainTextEdit,
@@ -312,15 +312,30 @@ class SchedaModuli(QWidget):
                 w.hide()
                 w.setParent(None)
                 w.deleteLater()
-        voci = list(pratica.dati.get("_moduli", {}).items())
-        ordine = {m.id: m.map.get("ordine", 500) for m in core.elenco_moduli(self.f.archivio)}
-        voci.sort(key=lambda kv: (ordine.get(kv[0], 900), kv[0]))
+        voci = self._ordinati()
         self.vuoto.setVisible(not voci)
-        for mod_id, info in voci:
+        for pos, (mod_id, info) in enumerate(voci):
             riga = QWidget()
             h = QHBoxLayout(riga)
             h.setContentsMargins(0, 2, 0, 2)
             h.setSpacing(8)
+            num = QLabel(f"{pos + 1}")
+            num.setObjectName("numero")
+            num.setFixedWidth(30)
+            num.setAlignment(Qt.AlignCenter)
+            h.addWidget(num)
+            su = QToolButton()
+            su.setText("▲")
+            su.setToolTip("Sposta su")
+            su.setEnabled(pos > 0)
+            su.clicked.connect(lambda _=0, k=mod_id: self.muovi(k, -1))
+            giu = QToolButton()
+            giu.setText("▼")
+            giu.setToolTip("Sposta giù")
+            giu.setEnabled(pos < len(voci) - 1)
+            giu.clicked.connect(lambda _=0, k=mod_id: self.muovi(k, +1))
+            h.addWidget(su)
+            h.addWidget(giu)
             t = QLabel(self._titolo(mod_id))
             t.setFixedWidth(320)
             t.setWordWrap(True)
@@ -341,6 +356,27 @@ class SchedaModuli(QWidget):
             riga.show()
         self.righe.addStretch()
         self.righe.activate()
+
+    def _ordinati(self):
+        """Moduli della pratica nell'ordine scelto dall'utente (i nuovi vanno in fondo)."""
+        moduli = self.pratica.dati.get("_moduli", {})
+        salvato = self.pratica.dati.get("_ordine_moduli", [])
+        ordine = [k for k in salvato if k in moduli]
+        nuovi = [k for k in moduli if k not in ordine]
+        if nuovi or len(ordine) != len(salvato):
+            self.pratica.dati["_ordine_moduli"] = ordine + nuovi
+            self.pratica.salva()
+        return [(k, moduli[k]) for k in ordine + nuovi]
+
+    def muovi(self, mod_id, verso):
+        self._ordinati()
+        ordine = self.pratica.dati["_ordine_moduli"]
+        i = ordine.index(mod_id)
+        j = i + verso
+        if 0 <= j < len(ordine):
+            ordine[i], ordine[j] = ordine[j], ordine[i]
+            self.pratica.salva()
+            self.carica(self.pratica)
 
     # ------------------------------------------------------------------
     def nuovo(self):

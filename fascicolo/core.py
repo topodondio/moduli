@@ -280,6 +280,8 @@ class Archivio:
                     nuova.registra_modulo(mod_id, dest)
                     if pratica.dati["_moduli"][mod_id].get("xfa"):
                         nuova.dati["_moduli"][mod_id]["xfa"] = True
+            nuova.dati["_ordine_moduli"] = [k for k in pratica.dati.get("_ordine_moduli", [])
+                                            if k in nuova.dati.get("_moduli", {})]
         nuova.salva()
         return nuova
 
