@@ -226,9 +226,13 @@ class Archivio:
 
     def nuova(self, nome, comune=""):
         anno = datetime.now().year
-        esistenti = [p.name for p in self.radice.iterdir() if p.is_dir()]
-        n = 1 + sum(1 for e in esistenti if e.startswith(f"{anno}-"))
+        usati = {int(m.group(1)) for d in self.radice.iterdir() if d.is_dir()
+                 for m in [re.match(rf"{anno}-(\d{{3}})", d.name)] if m}
+        n = max(usati, default=0) + 1
         cartella = self.radice / _slug(f"{anno}-{n:03d} {nome}")
+        while cartella.exists():
+            n += 1
+            cartella = self.radice / _slug(f"{anno}-{n:03d} {nome}")
         cartella.mkdir()
         for s in SOTTOCARTELLE:
             (cartella / s).mkdir()
@@ -236,6 +240,56 @@ class Archivio:
                                            "immobile.comune": comune}})
         p.salva()
         return p
+
+    def modifica(self, pratica, nome, comune):
+        """Cambia nome e comune; rinomina anche la cartella (tenendo il numero AAAA-NNN)."""
+        vecchio_comune = pratica.valori.get("pratica.comune", "")
+        pratica.set("pratica.nome", nome)
+        pratica.set("pratica.comune", comune)
+        if not pratica.valori.get("immobile.comune") or pratica.valori.get("immobile.comune") == vecchio_comune:
+            pratica.set("immobile.comune", comune)
+        pratica.salva()
+        m = re.match(r"^(\d{4}-\d{3})\s", pratica.cartella.name)
+        nuovo_nome = _slug(f"{m.group(1)} {nome}" if m else nome)
+        dest = self.radice / nuovo_nome
+        if dest != pratica.cartella and not dest.exists():
+            pratica.cartella.rename(dest)
+            pratica.cartella = dest
+        return pratica
+
+    def duplica(self, pratica, nome, comune, allegati=False, moduli=False):
+        """Nuova pratica con gli stessi dati; a richiesta copia anche allegati e moduli."""
+        nuova = self.nuova(nome, comune)
+        for k, v in pratica.valori.items():
+            if k not in ("pratica.nome", "pratica.comune"):
+                nuova.valori[k] = v
+        nuova.valori["pratica.comune"] = comune
+        if allegati:
+            src = pratica.cartella / "Allegati"
+            if src.exists():
+                for f in src.iterdir():
+                    if f.is_file():
+                        shutil.copy2(f, nuova.cartella / "Allegati" / f.name)
+                nuova.dati["_allegati"] = json.loads(json.dumps(pratica.dati.get("_allegati", {})))
+        if moduli:
+            for mod_id in pratica.dati.get("_moduli", {}):
+                f = pratica.file_modulo(mod_id)
+                if f.exists():
+                    dest = nuova.cartella / "Moduli" / f.name
+                    shutil.copy2(f, dest)
+                    nuova.registra_modulo(mod_id, dest)
+                    if pratica.dati["_moduli"][mod_id].get("xfa"):
+                        nuova.dati["_moduli"][mod_id]["xfa"] = True
+        nuova.salva()
+        return nuova
+
+    def elimina(self, pratica):
+        """Non cancella: sposta la cartella della pratica in <archivio>/_cestino."""
+        cestino = self.radice / "_cestino"
+        cestino.mkdir(exist_ok=True)
+        dest = cestino / f"{pratica.cartella.name} ({datetime.now():%Y-%m-%d %H.%M})"
+        shutil.move(str(pratica.cartella), str(dest))
+        return dest
 
     # comuni e rubrica -------------------------------------------------------
     def comuni(self):

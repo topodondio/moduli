@@ -594,7 +594,21 @@ class Finestra(QMainWindow):
         self.lista = QListWidget()
         self.lista.setObjectName("listaPratiche")
         self.lista.currentItemChanged.connect(self._seleziona)
+        self.lista.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.lista.setWordWrap(True)
+        self.lista.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.lista.customContextMenuRequested.connect(self._menu_pratica)
         bl.addWidget(self.lista, 1)
+        hp = QHBoxLayout()
+        hp.setSpacing(4)
+        for testo, slot, tip in (("Modifica", self.modifica_pratica, "Cambia nome e comune della pratica"),
+                                 ("Duplica", self.duplica_pratica, "Crea una nuova pratica con gli stessi dati"),
+                                 ("Elimina", self.elimina_pratica, "Sposta la pratica nel cestino dell'archivio")):
+            b = bottone(testo, slot, tip=tip)
+            b.setObjectName("piccolo")
+            hp.addWidget(b)
+        bl.addLayout(hp)
+        bl.addSpacing(8)
         bl.addWidget(bottone("Comuni", self.comuni))
         bl.addWidget(bottone("Cartella archivio…", self.scegli_archivio))
         self.lbl_archivio = QLabel()
@@ -866,6 +880,92 @@ class Finestra(QMainWindow):
                 core.cambia_cartella_moduli(p, d.cartella_moduli())
             self.ricarica_elenco(seleziona=p.cartella)
             self.tabs.setCurrentIndex(0)
+
+    # ------------------------------------------------------------------ gestione pratiche
+    def _menu_pratica(self, pos):
+        it = self.lista.itemAt(pos)
+        if not it:
+            return
+        self.lista.setCurrentItem(it)
+        from PySide6.QtWidgets import QMenu
+        m = QMenu(self)
+        m.addAction("Modifica nome e comune…", self.modifica_pratica)
+        m.addAction("Duplica…", self.duplica_pratica)
+        m.addAction("Apri la cartella", lambda: self.pratica and core.apri_con_sistema(self.pratica.cartella))
+        m.addSeparator()
+        m.addAction("Elimina…", self.elimina_pratica)
+        m.exec(self.lista.mapToGlobal(pos))
+
+    def _comuni(self):
+        return [c["nome"] for c in self.archivio.comuni()]
+
+    def _rilascia_file(self):
+        """Smette di sorvegliare i file della pratica (su Windows altrimenti non si possono spostare)."""
+        self.scheda_dati.salva_subito()
+        vecchi = self.watcher.files() + self.watcher.directories()
+        if vecchi:
+            self.watcher.removePaths(vecchi)
+
+    def modifica_pratica(self):
+        p = self.pratica
+        if not p:
+            return
+        d = NuovaPratica(self._comuni(), self, "Modifica pratica", p.valori.get("pratica.nome", p.cartella.name),
+                         p.valori.get("pratica.comune", ""), "Anche la cartella della pratica prende il nuovo nome.",
+                         testo_ok="Salva")
+        if not d.exec():
+            return
+        self._rilascia_file()
+        try:
+            self.archivio.modifica(p, d.nome.text().strip(), d.comune.currentText().strip())
+        except OSError as e:
+            QMessageBox.warning(self, "Modifica pratica",
+                                f"Dati salvati, ma non riesco a rinominare la cartella (forse un file è aperto):\n{e}")
+        self.ricarica_elenco(seleziona=p.cartella)
+
+    def duplica_pratica(self):
+        p = self.pratica
+        if not p:
+            return
+        d = NuovaPratica(self._comuni(), self, "Duplica pratica", p.valori.get("pratica.nome", "") + " (copia)",
+                         p.valori.get("pratica.comune", ""),
+                         "Viene creata una nuova pratica con tutti i dati di questa (titolare, immobile, tecnici…).",
+                         duplica=True, testo_ok="Duplica")
+        if not d.exec():
+            return
+        self.scheda_dati.salva_subito()
+        nuova = self.archivio.duplica(p, d.nome.text().strip(), d.comune.currentText().strip(),
+                                      d.ck_allegati.isChecked(), d.ck_moduli.isChecked())
+        self.ricarica_elenco(seleziona=nuova.cartella)
+        self.stato(f"Creata la pratica «{nuova.nome}»")
+
+    def elimina_pratica(self):
+        p = self.pratica
+        if not p:
+            return
+        fuori = [p.file_modulo(k) for k in p.dati.get("_moduli", {}) if p.cartella_propria(k)]
+        extra = (f"\n\nI {len(fuori)} moduli salvati in altre cartelle (es. sul server) non vengono toccati."
+                 if fuori else "")
+        if QMessageBox.question(self, "Elimina pratica",
+                                f"Eliminare la pratica «{p.nome}»?\n\nLa cartella viene spostata nel cestino "
+                                f"dell'archivio ({self.archivio.radice / '_cestino'}), da dove puoi recuperarla."
+                                + extra) != QMessageBox.Yes:
+            return
+        self._rilascia_file()
+        try:
+            self.archivio.elimina(p)
+        except OSError as e:
+            QMessageBox.warning(self, "Elimina pratica", f"Non riesco a spostare la cartella (forse un file è aperto):\n{e}")
+            self._sorveglia()
+            return
+        self.pratica = None
+        self.tabs.setEnabled(False)
+        self.nome.setText("Nessuna pratica selezionata")
+        self.info.setText("Crea una nuova pratica o selezionane una dall'elenco.")
+        self.ricarica_elenco()
+        if self.lista.count():
+            self.lista.setCurrentRow(0)
+        self.stato(f"Pratica «{p.nome}» spostata nel cestino")
 
     def comuni(self):
         if Comuni(self.archivio, self).exec():

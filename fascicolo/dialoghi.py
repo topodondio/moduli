@@ -27,9 +27,10 @@ def _bottoni(dlg, ok="OK", annulla="Annulla"):
 # --------------------------------------------------------------------------- nuova pratica
 
 class NuovaPratica(QDialog):
-    def __init__(self, comuni, parent=None):
+    def __init__(self, comuni, parent=None, titolo="Nuova pratica", nome="", comune="", nota=None,
+                 duplica=False, testo_ok="Crea"):
         super().__init__(parent)
-        self.setWindowTitle("Nuova pratica")
+        self.setWindowTitle(titolo)
         self.setMinimumWidth(440)
         lay = QVBoxLayout(self)
         f = QFormLayout()
@@ -40,14 +41,23 @@ class NuovaPratica(QDialog):
         self.comune.addItems([""] + comuni)
         f.addRow("Nome pratica", self.nome)
         f.addRow("Comune", self.comune)
+        self.nome.setText(nome)
+        self.comune.setEditText(comune)
+        self.ck_allegati = self.ck_moduli = None
+        if duplica:
+            from PySide6.QtWidgets import QCheckBox
+            self.ck_allegati = QCheckBox("Copia anche gli allegati")
+            self.ck_moduli = QCheckBox("Copia anche i moduli compilati")
+            f.addRow("", self.ck_allegati)
+            f.addRow("", self.ck_moduli)
 
         lay.addLayout(f)
-        n = QLabel("Verrà creata la cartella della pratica, con dentro Moduli e Allegati. "
-                   "Ogni modulo potrai poi salvarlo dove vuoi.")
+        n = QLabel(nota or "Verrà creata la cartella della pratica, con dentro Moduli e Allegati. "
+                         "Ogni modulo potrai poi salvarlo dove vuoi.")
         n.setObjectName("nota")
         n.setWordWrap(True)
         lay.addWidget(n)
-        lay.addWidget(_bottoni(self, "Crea"))
+        lay.addWidget(_bottoni(self, testo_ok))
 
     def _sfoglia(self):
         from PySide6.QtWidgets import QFileDialog

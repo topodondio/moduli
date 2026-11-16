@@ -28,6 +28,11 @@ Il programma ha tre schede.
    il tipo di documento e una nota. Vanno nella cartella `Allegati` della pratica; "Togli dalla
    pratica" li sposta in `Allegati/_tolti` senza cancellarli.
 
+**Pratiche** (barra a sinistra): sotto l'elenco ci sono **Modifica** (nome e comune; rinomina
+anche la cartella), **Duplica** (nuova pratica con gli stessi dati, a scelta anche allegati e
+moduli) ed **Elimina** (la pratica va in `<archivio>/_cestino`, da cui si recupera; i moduli
+salvati in altre cartelle non vengono toccati). Le stesse voci sono nel menu del tasto destro.
+
 **Comuni** (barra a sinistra): elenco dei comuni con la PEC, usata nell'informativa privacy.
 
 ## Moduli

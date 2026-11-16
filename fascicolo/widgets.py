@@ -27,6 +27,7 @@ QToolTip {{ background: #ffffff; color: #1f2b2e; border: 1px solid #cfd5cf; }}
 #listaPratiche::item:hover:!selected {{ background: #2c3a3d; }}
 #barra QPushButton {{ background: #2c3a3d; color: #dfe7e5; border: none; border-radius: 6px; padding: 7px 10px; text-align: left; }}
 #barra QPushButton:hover {{ background: #364649; }}
+#barra QPushButton#piccolo {{ text-align: center; padding: 5px 4px; font-size: 12px; }}
 #barra QPushButton#primario {{ background: {ACCENTO}; color: white; text-align: center; font-weight: 600; }}
 #barra QPushButton#primario:hover {{ background: #378f7d; }}
 #intestazione {{ background: #ffffff; border-bottom: 1px solid #dfe2dc; }}
