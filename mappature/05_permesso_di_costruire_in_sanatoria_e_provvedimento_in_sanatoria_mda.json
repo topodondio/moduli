@@ -1,0 +1,856 @@
+{
+ "modulo": "05.PERMESSO_DI_COSTRUIRE_IN_SANATORIA_E_PROVVEDIMENTO_IN_SANATORIA_MDA.pdf",
+ "titolo": "Sanatoria – domanda",
+ "gruppo": "Titoli edilizi",
+ "ordine": 50,
+ "campi": {
+  "Comune di": {
+   "k": "pratica.comune"
+  },
+  "undefined": {
+   "k": "titolare.tipo",
+   "v": "Società"
+  },
+  "undefined_2": {
+   "k": "titolare.tipo",
+   "v": "Persona"
+  },
+  "NomeRow1": {
+   "k": "titolare.nome",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "CognomeRow1": {
+   "k": "titolare.cognome",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "CodFiscaleRow1": {
+   "k": "titolare.cf",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "SessoRow1": {
+   "k": "titolare.sesso",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "Data nascitaRow1": {
+   "k": "titolare.data_nascita",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "CittadinanzaRow1": {
+   "k": "titolare.cittadinanza",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "StatoRow1": {
+   "k": "titolare.nascita_stato",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "ProvinciaRow1": {
+   "k": "titolare.nascita_prov",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "ComuneRow1": {
+   "k": "titolare.nascita_comune",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "StatoRow1_2": {
+   "k": "titolare.res_stato",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "ProvinciaRow1_2": {
+   "k": "titolare.res_prov",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "ComuneRow1_2": {
+   "k": "titolare.res_comune",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "Toponimo DUGRow1": {
+   "k": "titolare.res_dug",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "Denominazione stradaleRow1": {
+   "k": "titolare.res_via",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "Numero civicoRow1": {
+   "k": "titolare.res_civico",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "CAPRow1": {
+   "k": "titolare.res_cap",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "eMailPECRow1": {
+   "k": "titolare.email",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "Telefono fissocellulareRow1": {
+   "k": "titolare.tel",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "In qualità diRow1": {
+   "k": "titolare.qualita",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "ISCRITTA ALLA CCIAA": {
+   "k": "societa.iscrizione",
+   "v": "Iscritta alla CCIAA",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "NON ANCORA ISCRITTA": {
+   "k": "societa.iscrizione",
+   "v": "Non ancora iscritta",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "NON NECESSITA DI ISCRIZIONE AL RI DELLA CCIAA": {
+   "k": "societa.iscrizione",
+   "v": "Non necessita di iscrizione",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Camera di commercio diRow1": {
+   "k": "societa.cciaa",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Numero REARow1": {
+   "k": "societa.rea",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "DataRow1": {
+   "k": "societa.rea_data",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "NomeRow1_2": {
+   "k": "titolare.nome",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "CognomeRow1_2": {
+   "k": "titolare.cognome",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "CodFiscaleRow1_2": {
+   "k": "titolare.cf",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "SessoRow1_2": {
+   "k": "titolare.sesso",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Data nascitaRow1_2": {
+   "k": "titolare.data_nascita",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "CittadinanzaRow1_2": {
+   "k": "titolare.cittadinanza",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "StatoRow1_3": {
+   "k": "titolare.nascita_stato",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "ProvinciaRow1_3": {
+   "k": "titolare.nascita_prov",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "ComuneRow1_3": {
+   "k": "titolare.nascita_comune",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "StatoRow1_4": {
+   "k": "titolare.res_stato",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "ProvinciaRow1_4": {
+   "k": "titolare.res_prov",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "ComuneRow1_4": {
+   "k": "titolare.res_comune",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Toponimo DUGRow1_2": {
+   "k": "titolare.res_dug",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Denominazione stradaleRow1_2": {
+   "k": "titolare.res_via",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Numero civicoRow1_2": {
+   "k": "titolare.res_civico",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "CAPRow1_2": {
+   "k": "titolare.res_cap",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "eMailPECRow1_2": {
+   "k": "titolare.email",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Telefono fissocellulareRow1_2": {
+   "k": "titolare.tel",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "CaricaRow1": {
+   "k": "titolare.carica",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Denominazione nome della ditta o azienda o ragione socialeRow1": {
+   "k": "societa.denominazione",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Forma giuridicaRow1": {
+   "k": "societa.forma",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Codice FiscaleRow1": {
+   "k": "societa.cf",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "PIVARow1": {
+   "k": "societa.piva",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "StatoRow1_5": {
+   "k": "societa.sede_stato",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Provincia  Località esteraRow1": {
+   "k": "societa.sede_prov",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "ComuneRow1_5": {
+   "k": "societa.sede_comune",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Toponimo DUGRow1_3": {
+   "k": "societa.sede_dug",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Denominazione stradaleRow1_3": {
+   "k": "societa.sede_via",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Numero civicoRow1_3": {
+   "k": "societa.sede_civico",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "CAPRow1_3": {
+   "k": "societa.sede_cap",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Telefono fissoCellulareRow1": {
+   "k": "societa.tel",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "FaxRow1": {
+   "k": "societa.fax",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "PECRow1": {
+   "k": "societa.pec",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "descrizione sinteticaRow1": {
+   "k": "pratica.oggetto"
+  },
+  "NB Inserire lindirizzo della casella PEC a cui lo Sportello dovrà inviare la ricevuta e le altre comunicazioni relative alla praticaRow1": {
+   "k": "pratica.pec_comunicazioni"
+  },
+  "Dichiara di essere consapevole che le dichiarazioni false la falsità negli atti e luso di atti falsi comportano": {
+   "k": "pratica.dichiarazioni"
+  },
+  "Comune di_2": {
+   "k": "pratica.comune"
+  },
+  "indirizzo pec": {
+   "k": "comune.pec"
+  },
+  "devono essere rivolte al Comune di": {
+   "k": "pratica.comune"
+  },
+  "indirizzo mail": {
+   "k": "comune.pec"
+  },
+  "Illa sottoscrittoa dichiara di aver letto linformativa sul trattamento dei dati personali": {
+   "k": "pratica.dichiarazioni"
+  },
+  "CHIEDE A COMUNE DI": {
+   "k": "pratica.comune"
+  },
+  "ComuneRow1_6": {
+   "k": "immobile.comune"
+  },
+  "FrazioneRow1": {
+   "k": "immobile.frazione"
+  },
+  "ProvRow1": {
+   "k": "immobile.prov"
+  },
+  "CAPRow1_5": {
+   "k": "immobile.cap"
+  },
+  "Via Viale PiazzaRow1": {
+   "k": "immobile.via"
+  },
+  "n civicoRow1": {
+   "k": "immobile.civico"
+  },
+  "scalaRow1": {
+   "k": "immobile.scala"
+  },
+  "pianoRow1": {
+   "k": "immobile.piano"
+  },
+  "internoRow1": {
+   "k": "immobile.interno"
+  },
+  "PfRow1": {
+   "k": "immobile.particelle.0.pf"
+  },
+  "PedRow1": {
+   "k": "immobile.particelle.0.ped"
+  },
+  "del CCRow1": {
+   "k": "immobile.particelle.0.cc"
+  },
+  "porzione materialeRow1": {
+   "k": "immobile.particelle.0.pm"
+  },
+  "subalternoRow1": {
+   "k": "immobile.particelle.0.sub"
+  },
+  "PfRow2": {
+   "k": "immobile.particelle.1.pf"
+  },
+  "PedRow2": {
+   "k": "immobile.particelle.1.ped"
+  },
+  "del CCRow2": {
+   "k": "immobile.particelle.1.cc"
+  },
+  "porzione materialeRow2": {
+   "k": "immobile.particelle.1.pm"
+  },
+  "subalternoRow2": {
+   "k": "immobile.particelle.1.sub"
+  },
+  "PfRow3": {
+   "k": "immobile.particelle.2.pf"
+  },
+  "PedRow3": {
+   "k": "immobile.particelle.2.ped"
+  },
+  "del CCRow3": {
+   "k": "immobile.particelle.2.cc"
+  },
+  "porzione materialeRow3": {
+   "k": "immobile.particelle.2.pm"
+  },
+  "subalternoRow3": {
+   "k": "immobile.particelle.2.sub"
+  },
+  "PfRow4": {
+   "k": "immobile.particelle.3.pf"
+  },
+  "PedRow4": {
+   "k": "immobile.particelle.3.ped"
+  },
+  "del CCRow4": {
+   "k": "immobile.particelle.3.cc"
+  },
+  "porzione materialeRow4": {
+   "k": "immobile.particelle.3.pm"
+  },
+  "subalternoRow4": {
+   "k": "immobile.particelle.3.sub"
+  },
+  "PfRow5": {
+   "k": "immobile.particelle.4.pf"
+  },
+  "PedRow5": {
+   "k": "immobile.particelle.4.ped"
+  },
+  "del CCRow5": {
+   "k": "immobile.particelle.4.cc"
+  },
+  "porzione materialeRow5": {
+   "k": "immobile.particelle.4.pm"
+  },
+  "subalternoRow5": {
+   "k": "immobile.particelle.4.sub"
+  },
+  "undefined_7": {
+   "k": "titolarita.tipo",
+   "v": "Proprietario esclusivo"
+  },
+  "undefined_8": {
+   "k": "titolarita.tipo",
+   "v": "Titolare di altro diritto reale"
+  },
+  "indicare se comproprietario usufruttuario etcRow1": {
+   "k": "titolarita.desc"
+  },
+  "undefined_9": {
+   "k": "titolarita.tipo",
+   "v": "Titolare di diritto contrattuale"
+  },
+  "undefined_15": {
+   "k": "titolarita.altri_titolari",
+   "v": "Sì"
+  },
+  "undefined_16": {
+   "k": "titolarita.altri_titolari",
+   "v": "No"
+  },
+  "Lintervento interessa limmobile  larea avente destinazione dusoRow1": {
+   "k": "immobile.destinazione"
+  },
+  "undefined_24": {
+   "k": "titolarita.parti_comuni",
+   "v": "Non riguardano parti comuni"
+  },
+  "undefined_25": {
+   "k": "titolarita.parti_comuni",
+   "v": [
+    "Condominio - senza assenso",
+    "Condominio - con assenso (verbale allegato)"
+   ]
+  },
+  "undefined_26": {
+   "k": "titolarita.parti_comuni",
+   "v": "Condominio - senza assenso"
+  },
+  "undefined_27": {
+   "k": "titolarita.parti_comuni",
+   "v": "Condominio - con assenso (verbale allegato)"
+  },
+  "riguardano parti comuni di un fabbricato con più proprietà non costituito in condominio e": {
+   "k": "titolarita.parti_comuni",
+   "v": [
+    "Più proprietà non in condominio - senza assenso",
+    "Più proprietà non in condominio - con assenso allegato"
+   ]
+  },
+  "undefined_28": {
+   "k": "titolarita.parti_comuni",
+   "v": "Più proprietà non in condominio - senza assenso"
+  },
+  "lintervento necessita di atto di assenso dei comproprietari che si allega": {
+   "k": "titolarita.parti_comuni",
+   "v": "Più proprietà non in condominio - con assenso allegato"
+  },
+  "non sussistono vincoli iscritti che creano impedimento al rilascio del titolo abilitativo edilizio e": {
+   "k": "titolarita.vincoli_lf",
+   "v": "Non sussistono vincoli"
+  },
+  "sussistono i seguenti vincoli": {
+   "k": "titolarita.vincoli_lf",
+   "v": "Sussistono vincoli"
+  },
+  "undefined_29": {
+   "k": "pdc.contributo",
+   "v": "Non soggetto (nessun aumento del carico urbanistico)"
+  },
+  "undefined_30": {
+   "k": "pdc.contributo",
+   "v": "Soggetto - si invierà la ricevuta di pagamento"
+  },
+  "undefined_31": {
+   "k": "pdc.contributo",
+   "v": "Soggetto - si invierà la ricevuta di pagamento"
+  },
+  "rientra nei casi di esenzione ai sensi dellart 90 comma I Lettera  della LP n 152015": {
+   "k": "pdc.contributo",
+   "v": "Esente ai sensi dell'art. 90 LP 15/2015"
+  },
+  "letteraRow1": {
+   "k": "pdc.esenzione_lettera",
+   "se": {
+    "pdc.contributo": "Esente ai sensi dell'art. 90 LP 15/2015"
+   }
+  },
+  "si chiede la rateizzazione del contributo di costruzione secondo le modalità stabilite dal regolamento del Comune": {
+   "k": "pdc.rateizzazione",
+   "v": true
+  },
+  "undefined_32": {
+   "k": "progettista.presenta",
+   "v": false
+  },
+  "undefined_33": {
+   "k": "progettista.presenta",
+   "v": true
+  },
+  "undefined_34": {
+   "k": "progettista.anche_dl"
+  },
+  "TitoloRow1": {
+   "k": "progettista.titolo"
+  },
+  "CognomeRow1_6": {
+   "k": "progettista.cognome"
+  },
+  "NomeRow1_6": {
+   "k": "progettista.nome"
+  },
+  "CFRow1": {
+   "k": "progettista.cf"
+  },
+  "Data di nascitaRow1": {
+   "k": "progettista.data_nascita"
+  },
+  "CittadinanzaRow1_6": {
+   "k": "progettista.cittadinanza"
+  },
+  "SessoRow1_6": {
+   "k": "progettista.sesso"
+  },
+  "StatoRow1_11": {
+   "k": "progettista.nascita_stato"
+  },
+  "ProvinciaRow1_11": {
+   "k": "progettista.nascita_prov"
+  },
+  "Comune italiano o Località esteraRow1": {
+   "k": "progettista.nascita_comune"
+  },
+  "StatoRow1_12": {
+   "k": "progettista.res_stato"
+  },
+  "ProvinciaRow1_12": {
+   "k": "progettista.res_prov"
+  },
+  "Comune italiano o Località esteraRow1_2": {
+   "k": "progettista.res_comune"
+  },
+  "Via Piazza eccRow1": {
+   "t": "{progettista.res_dug} {progettista.res_via}"
+  },
+  "NRow1_2": {
+   "k": "progettista.res_civico"
+  },
+  "CAPRow1_9": {
+   "k": "progettista.res_cap"
+  },
+  "StatoRow1_13": {
+   "k": "progettista.studio_stato"
+  },
+  "ProvinciaRow1_13": {
+   "k": "progettista.studio_prov"
+  },
+  "Comune italiano o Località esteraRow1_3": {
+   "k": "progettista.studio_comune"
+  },
+  "Via Piazza eccRow1_2": {
+   "k": "progettista.studio_via"
+  },
+  "NRow1_3": {
+   "k": "progettista.studio_civico"
+  },
+  "CAPRow1_10": {
+   "k": "progettista.studio_cap"
+  },
+  "Iscritto allordinecollegioalboRow1": {
+   "k": "progettista.albo"
+  },
+  "diRow1": {
+   "k": "progettista.albo_di"
+  },
+  "al nRow1": {
+   "k": "progettista.albo_n"
+  },
+  "TelefonoRow1": {
+   "k": "progettista.tel"
+  },
+  "faxRow1": {
+   "k": "progettista.fax"
+  },
+  "cellRow1": {
+   "k": "progettista.cell"
+  },
+  "posta elettronica certificataRow1": {
+   "k": "progettista.pec"
+  },
+  "undefined_36": {
+   "k": "progettista.altri",
+   "v": "Sì"
+  },
+  "undefined_37": {
+   "k": "progettista.altri",
+   "v": "No"
+  },
+  "undefined_40": {
+   "k": "pdc.lusso",
+   "v": "Di lusso (A1, A8, A9)"
+  },
+  "undefined_41": {
+   "k": "pdc.lusso",
+   "v": "Non di lusso"
+  },
+  "undefined_42": {
+   "k": "diritti.dovuti",
+   "v": "Non dovuti"
+  },
+  "undefined_44": {
+   "k": "diritti.dovuti",
+   "v": "Dovuti"
+  },
+  "per un totale di EuroRow1": {
+   "k": "diritti.importo",
+   "se": {
+    "diritti.dovuti": "Dovuti"
+   }
+  },
+  "undefined_46": {
+   "k": "diritti.pagamento",
+   "v": "Conto corrente postale",
+   "se": {
+    "diritti.dovuti": "Dovuti"
+   }
+  },
+  "in dataRow1": {
+   "k": "diritti.data",
+   "se": {
+    "diritti.dovuti": "Dovuti",
+    "diritti.pagamento": "Conto corrente postale"
+   }
+  },
+  "undefined_47": {
+   "k": "diritti.pagamento",
+   "v": "pagoPA / bonifico",
+   "se": {
+    "diritti.dovuti": "Dovuti"
+   }
+  },
+  "in dataRow1_2": {
+   "k": "diritti.data",
+   "se": {
+    "diritti.dovuti": "Dovuti",
+    "diritti.pagamento": "pagoPA / bonifico"
+   }
+  },
+  "indicare il codice IUV  codice TRNRow1": {
+   "k": "diritti.iuv",
+   "se": {
+    "diritti.dovuti": "Dovuti",
+    "diritti.pagamento": "pagoPA / bonifico"
+   }
+  },
+  "Il pagamento è dovuto e si intende assolvere lobbligo tramite il circuito digitale pagoPA": {
+   "k": "diritti.bollo",
+   "v": "pagoPA"
+  },
+  "Due marche da €1600 ciascuna una per la domanda e una per lautorizzazione": {
+   "k": "diritti.bollo",
+   "v": "pagoPA"
+  },
+  "Il pagamento è dovuto e si intende assolvere lobbligo con marche da bollo di cui si riportano i numeri di serie": {
+   "k": "diritti.bollo",
+   "v": "Marche da bollo"
+  },
+  "numero seriale 1Row1": {
+   "k": "diritti.marca1_n",
+   "se": {
+    "diritti.bollo": "Marche da bollo"
+   }
+  },
+  "dataRow1": {
+   "k": "diritti.marca1_data",
+   "se": {
+    "diritti.bollo": "Marche da bollo"
+   }
+  },
+  "undefined_48": {
+   "k": "diritti.bollo",
+   "v": "Marche da bollo"
+  },
+  "numero seriale 1Row1_2": {
+   "k": "diritti.marca2_n",
+   "se": {
+    "diritti.bollo": "Marche da bollo"
+   }
+  },
+  "dataRow1_2": {
+   "k": "diritti.marca2_data",
+   "se": {
+    "diritti.bollo": "Marche da bollo"
+   }
+  },
+  "undefined_49": {
+   "k": "diritti.bollo",
+   "v": "Esente"
+  },
+  "ATTENZIONE qualora dai controlli successivi il contenuto delle dichiarazioni risulti non corrispondente al vero": {
+   "k": "pratica.dichiarazioni"
+  },
+  "il seguente domicilio digitale inserito in INAD art6 quater Dlgs lgs n 822005": {
+   "k": "pratica.domicilio_digitale",
+   "pieno": true
+  },
+  "il seguente domicilio digitale inserito in INAD art6 quater Dlgs lgs n 822005Row1": {
+   "k": "pratica.domicilio_digitale"
+  },
+  "del permesso di costruire in SANATORIA ai sensi dellart 135 comma 1 della LP n 12008": {
+   "k": "sanatoria.tipo",
+   "v": "Permesso di costruire in sanatoria (art. 135, c. 1, LP 1/2008)"
+  },
+  "del provvedimento di SANATORIA ai sensi dellart 134 comma 5 della LP n 12008": {
+   "k": "sanatoria.tipo",
+   "v": "Provvedimento di sanatoria (art. 134, c. 5, LP 1/2008)"
+  },
+  "del permesso di costruire in SANATORIA ai sensi dellart 86 quater della LP 152015": {
+   "k": "sanatoria.tipo",
+   "v": "Permesso di costruire in sanatoria (art. 86 quater LP 15/2015)"
+  },
+  "undefined_5": {
+   "k": "sanatoria.modalita",
+   "v": "In assenza di titolo"
+  },
+  "undefined_6": {
+   "k": "sanatoria.modalita",
+   "v": "In difformità dal titolo"
+  },
+  "Titolo abilitativoRow1": {
+   "k": "sanatoria.titolo",
+   "se": {
+    "sanatoria.modalita": "In difformità dal titolo"
+   }
+  },
+  "NRow1": {
+   "k": "sanatoria.titolo_n",
+   "se": {
+    "sanatoria.modalita": "In difformità dal titolo"
+   }
+  },
+  "di dataRow1": {
+   "k": "sanatoria.titolo_data",
+   "se": {
+    "sanatoria.modalita": "In difformità dal titolo"
+   }
+  },
+  "undefined_10": {
+   "k": "sanatoria.richiedente",
+   "v": "Responsabile dell'abuso"
+  },
+  "undefined_11": {
+   "k": "sanatoria.richiedente",
+   "v": "Titolare del titolo edilizio"
+  }
+ }
+}

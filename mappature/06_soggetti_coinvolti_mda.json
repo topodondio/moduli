@@ -1,0 +1,883 @@
+{
+ "modulo": "06.SOGGETTI_COINVOLTI_MDA.pdf",
+ "titolo": "Comunicazione modifica soggetti coinvolti",
+ "gruppo": "Cantiere",
+ "ordine": 60,
+ "campi": {
+  "Comune di": {
+   "k": "pratica.comune"
+  },
+  "DITTASOCIETAIMPRESA": {
+   "k": "titolare.tipo",
+   "v": "Società"
+  },
+  "PERSONA Privato": {
+   "k": "titolare.tipo",
+   "v": "Persona"
+  },
+  "NomeRow1": {
+   "k": "titolare.nome",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "CognomeRow1": {
+   "k": "titolare.cognome",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "CodFiscaleRow1": {
+   "k": "titolare.cf",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "SessoRow1": {
+   "k": "titolare.sesso",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "Data nascitaRow1": {
+   "k": "titolare.data_nascita",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "CittadinanzaRow1": {
+   "k": "titolare.cittadinanza",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "StatoRow1": {
+   "k": "titolare.nascita_stato",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "ProvinciaRow1": {
+   "k": "titolare.nascita_prov",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "ComuneRow1": {
+   "k": "titolare.nascita_comune",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "StatoRow1_2": {
+   "k": "titolare.res_stato",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "ProvinciaRow1_2": {
+   "k": "titolare.res_prov",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "ComuneRow1_2": {
+   "k": "titolare.res_comune",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "Toponimo DUGRow1": {
+   "k": "titolare.res_dug",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "Denominazione stradaleRow1": {
+   "k": "titolare.res_via",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "Numero civicoRow1": {
+   "k": "titolare.res_civico",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "CAPRow1": {
+   "k": "titolare.res_cap",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "eMailPECRow1": {
+   "k": "titolare.email",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "Telefono fissocellulareRow1": {
+   "k": "titolare.tel",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "In qualità diRow1": {
+   "k": "titolare.qualita",
+   "se": {
+    "titolare.tipo": "Persona"
+   }
+  },
+  "ISCRITTA ALLA CCIAA": {
+   "k": "societa.iscrizione",
+   "v": "Iscritta alla CCIAA",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "NON ANCORA ISCRITTA": {
+   "k": "societa.iscrizione",
+   "v": "Non ancora iscritta",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "NON NECESSITA DI ISCRIZIONE AL RI DELLA CCIAA": {
+   "k": "societa.iscrizione",
+   "v": "Non necessita di iscrizione",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Camera di commercio diRow1": {
+   "k": "societa.cciaa",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Numero REARow1": {
+   "k": "societa.rea",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "DataRow1": {
+   "k": "societa.rea_data",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Testo1": {
+   "k": "titolare.nome",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Testo2": {
+   "k": "titolare.cognome",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Testo3": {
+   "k": "titolare.cf",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Testo4": {
+   "k": "titolare.sesso",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Testo5": {
+   "k": "titolare.data_nascita",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Testo6": {
+   "k": "titolare.cittadinanza",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Testo8": {
+   "k": "titolare.nascita_prov",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Testo7": {
+   "k": "titolare.nascita_stato",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "ComuneRow1_3": {
+   "k": "titolare.nascita_comune",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "StatoRow1_3": {
+   "k": "titolare.res_stato",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "ProvinciaRow1_3": {
+   "k": "titolare.res_prov",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "ComuneRow1_4": {
+   "k": "titolare.res_comune",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Toponimo DUGRow1_2": {
+   "k": "titolare.res_dug",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Denominazione stradaleRow1_2": {
+   "k": "titolare.res_via",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Numero civicoRow1_2": {
+   "k": "titolare.res_civico",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "CAPRow1_2": {
+   "k": "titolare.res_cap",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "eMailPECRow1_2": {
+   "k": "titolare.email",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Telefono fissocellulareRow1_2": {
+   "k": "titolare.tel",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "CaricaRow1": {
+   "k": "titolare.carica",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Denominazione nome della ditta o azienda o ragione socialeRow1": {
+   "k": "societa.denominazione",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Forma giuridicaRow1": {
+   "k": "societa.forma",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Codice FiscaleRow1": {
+   "k": "societa.cf",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "PIVARow1": {
+   "k": "societa.piva",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "StatoRow1_4": {
+   "k": "societa.sede_stato",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Provincia  Località esteraRow1": {
+   "k": "societa.sede_prov",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "ComuneRow1_5": {
+   "k": "societa.sede_comune",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Toponimo DUGRow1_3": {
+   "k": "societa.sede_dug",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Denominazione stradaleRow1_3": {
+   "k": "societa.sede_via",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Numero civicoRow1_3": {
+   "k": "societa.sede_civico",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "CAPRow1_3": {
+   "k": "societa.sede_cap",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "Telefono fissoCellulareRow1": {
+   "k": "societa.tel",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "FaxRow1": {
+   "k": "societa.fax",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "PECRow1": {
+   "k": "societa.pec",
+   "se": {
+    "titolare.tipo": "Società"
+   }
+  },
+  "descrizione sinteticaRow1": {
+   "k": "pratica.oggetto"
+  },
+  "NB Inserire lindirizzo della casella PEC a cui lo Sportello dovrà inviare la ricevuta e le altre comunicazioni relative alla praticaRow1": {
+   "k": "pratica.pec_comunicazioni"
+  },
+  "Dichiara di essere consapevole che le dichiarazioni false la falsità negli atti e luso di atti falsi comportano": {
+   "k": "pratica.dichiarazioni"
+  },
+  "indirizzo pec": {
+   "k": "pratica.comune"
+  },
+  "Finalità del trattamento": {
+   "k": "comune.pec"
+  },
+  "Il responsabile della protezione dei dati è contattabile allindirizzo mail": {
+   "k": "pratica.comune"
+  },
+  "Linteressato Lei ha il diritto di opporsi in qualsiasi momento per motivi connessi alla sua situazione particolare": {
+   "k": "comune.pec"
+  },
+  "Illa sottoscrittoa dichiara di aver letto linformativa sul trattamento dei dati personali": {
+   "k": "pratica.dichiarazioni"
+  },
+  "ComuneRow1_6": {
+   "k": "immobile.comune"
+  },
+  "FrazioneRow1": {
+   "k": "immobile.frazione"
+  },
+  "ProvRow1": {
+   "k": "immobile.prov"
+  },
+  "CAPRow1_5": {
+   "k": "immobile.cap"
+  },
+  "Via Viale PiazzaRow1": {
+   "k": "immobile.via"
+  },
+  "n civicoRow1": {
+   "k": "immobile.civico"
+  },
+  "scalaRow1": {
+   "k": "immobile.scala"
+  },
+  "pianoRow1": {
+   "k": "immobile.piano"
+  },
+  "internoRow1": {
+   "k": "immobile.interno"
+  },
+  "PfRow1": {
+   "k": "immobile.particelle.0.pf"
+  },
+  "PedRow1": {
+   "k": "immobile.particelle.0.ped"
+  },
+  "del CCRow1": {
+   "k": "immobile.particelle.0.cc"
+  },
+  "porzione materialeRow1": {
+   "k": "immobile.particelle.0.pm"
+  },
+  "subalternoRow1": {
+   "k": "immobile.particelle.0.sub"
+  },
+  "PfRow2": {
+   "k": "immobile.particelle.1.pf"
+  },
+  "PedRow2": {
+   "k": "immobile.particelle.1.ped"
+  },
+  "del CCRow2": {
+   "k": "immobile.particelle.1.cc"
+  },
+  "porzione materialeRow2": {
+   "k": "immobile.particelle.1.pm"
+  },
+  "subalternoRow2": {
+   "k": "immobile.particelle.1.sub"
+  },
+  "PfRow3": {
+   "k": "immobile.particelle.2.pf"
+  },
+  "PedRow3": {
+   "k": "immobile.particelle.2.ped"
+  },
+  "del CCRow3": {
+   "k": "immobile.particelle.2.cc"
+  },
+  "porzione materialeRow3": {
+   "k": "immobile.particelle.2.pm"
+  },
+  "subalternoRow3": {
+   "k": "immobile.particelle.2.sub"
+  },
+  "PfRow4": {
+   "k": "immobile.particelle.3.pf"
+  },
+  "PedRow4": {
+   "k": "immobile.particelle.3.ped"
+  },
+  "del CCRow4": {
+   "k": "immobile.particelle.3.cc"
+  },
+  "porzione materialeRow4": {
+   "k": "immobile.particelle.3.pm"
+  },
+  "subalternoRow4": {
+   "k": "immobile.particelle.3.sub"
+  },
+  "PfRow5": {
+   "k": "immobile.particelle.4.pf"
+  },
+  "PedRow5": {
+   "k": "immobile.particelle.4.ped"
+  },
+  "del CCRow5": {
+   "k": "immobile.particelle.4.cc"
+  },
+  "porzione materialeRow5": {
+   "k": "immobile.particelle.4.pm"
+  },
+  "subalternoRow5": {
+   "k": "immobile.particelle.4.sub"
+  },
+  "Denominazione nome della ditta o azienda o ragione socialeRow1_2": {
+   "k": "impresa.denominazione",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "Codice Fiscale  P IVARow1": {
+   "k": "impresa.cf_piva",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "Camera di commercio diRow1_2": {
+   "k": "impresa.cciaa",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "Numero REARow1_2": {
+   "k": "impresa.rea",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "DataRow1_2": {
+   "k": "impresa.rea_data",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "StatoRow1_5": {
+   "k": "impresa.sede_stato",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "ProvinciaRow1_5": {
+   "k": "impresa.sede_prov",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "ComuneRow1_7": {
+   "k": "impresa.sede_comune",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "Via Piazza eccRow1": {
+   "k": "impresa.sede_via",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "Numero civicoRow1_4": {
+   "k": "impresa.sede_civico",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "CAPRow1_6": {
+   "k": "impresa.sede_cap",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "Telefono fissoCellulareRow1_2": {
+   "k": "impresa.tel",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "FaxRow1_3": {
+   "k": "impresa.fax",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "PECRow1_2": {
+   "k": "impresa.pec",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "CognomeRow1_3": {
+   "k": "impresa.lr_cognome",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "NomeRow1_3": {
+   "k": "impresa.lr_nome",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "Codice fiscaleRow1": {
+   "k": "impresa.lr_cf",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "Testo11": {
+   "k": "impresa.lr_nato_stato",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "Testo9": {
+   "k": "impresa.lr_nato_a",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "Testo10": {
+   "k": "impresa.lr_nato_prov",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "nato ilRow1": {
+   "k": "impresa.lr_nato_il",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "TelefonoRow1": {
+   "k": "impresa.tel",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "FaxRow1_4": {
+   "k": "impresa.fax",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "CellRow1": {
+   "k": "impresa.lr_cell",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "Posta elettronicaRow1": {
+   "k": "impresa.lr_email",
+   "se": {
+    "lavori.modifica_impresa": "Impresa ad integrazione"
+   }
+  },
+  "Denominazione nome della ditta o azienda o ragione socialeRow1_3": {
+   "k": "impresa.denominazione",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "Codice Fiscale  P IVARow1_2": {
+   "k": "impresa.cf_piva",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "Camera di commercio diRow1_3": {
+   "k": "impresa.cciaa",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "Numero REARow1_3": {
+   "k": "impresa.rea",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "DataRow1_3": {
+   "k": "impresa.rea_data",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "StatoRow1_6": {
+   "k": "impresa.sede_stato",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "ProvinciaRow1_6": {
+   "k": "impresa.sede_prov",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "ComuneRow1_8": {
+   "k": "impresa.sede_comune",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "Via Piazza eccRow1_2": {
+   "k": "impresa.sede_via",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "Numero civicoRow1_5": {
+   "k": "impresa.sede_civico",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "CAPRow1_7": {
+   "k": "impresa.sede_cap",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "Telefono fissoCellulareRow1_3": {
+   "k": "impresa.tel",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "FaxRow1_5": {
+   "k": "impresa.fax",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "PECRow1_3": {
+   "k": "impresa.pec",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "CognomeRow1_4": {
+   "k": "impresa.lr_cognome",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "NomeRow1_4": {
+   "k": "impresa.lr_nome",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "Codice fiscaleRow1_2": {
+   "k": "impresa.lr_cf",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "Testo12": {
+   "k": "impresa.lr_nato_a",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "Testo13": {
+   "k": "impresa.lr_nato_prov",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "Testo14": {
+   "k": "impresa.lr_nato_stato",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "nato ilRow1_2": {
+   "k": "impresa.lr_nato_il",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "TelefonoRow1_2": {
+   "k": "impresa.tel",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "FaxRow1_6": {
+   "k": "impresa.fax",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "CellRow1_2": {
+   "k": "impresa.lr_cell",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "Posta elettronicaRow1_2": {
+   "k": "impresa.lr_email",
+   "se": {
+    "lavori.modifica_impresa": "Impresa subentrante"
+   }
+  },
+  "dichiara che lentità presunta del cantiere è inferiore a 200 uominigiorno ed i lavori non comportano i rischi": {
+   "k": "lavori.sicurezza",
+   "v": "Ricade - cantiere < 200 uomini-giorno"
+  },
+  "dichiara che lentità presunta del cantiere è pari o superiore a 200 uominigiorno o i lavori comportano i rischi": {
+   "k": "lavori.sicurezza",
+   "v": "Ricade - cantiere ≥ 200 uomini-giorno"
+  },
+  "il seguente domicilio digitale inserito in INAD art6 quater Dlgs lgs n 822005": {
+   "k": "pratica.domicilio_digitale",
+   "pieno": true
+  },
+  "il seguente domicilio digitale inserito in INAD art6 quater Dlgs lgs n 822005Row1": {
+   "k": "pratica.domicilio_digitale"
+  },
+  "undefined_3": {
+   "k": "lavori.titolo_tipo",
+   "v": "Permesso di costruire"
+  },
+  "provvedimentopratica n": {
+   "k": "lavori.titolo_n",
+   "se": {
+    "lavori.titolo_tipo": "Permesso di costruire"
+   }
+  },
+  "di data": {
+   "k": "lavori.titolo_data",
+   "se": {
+    "lavori.titolo_tipo": "Permesso di costruire"
+   }
+  },
+  "undefined_4": {
+   "k": "lavori.titolo_tipo",
+   "v": "SCIA"
+  },
+  "provvedimentopratica n_2": {
+   "k": "lavori.titolo_n",
+   "se": {
+    "lavori.titolo_tipo": "SCIA"
+   }
+  },
+  "di data_2": {
+   "k": "lavori.titolo_data",
+   "se": {
+    "lavori.titolo_tipo": "SCIA"
+   }
+  },
+  "undefined_5": {
+   "k": "lavori.titolo_tipo",
+   "v": "CILA"
+  },
+  "provvedimentopratica n_3": {
+   "k": "lavori.titolo_n",
+   "se": {
+    "lavori.titolo_tipo": "CILA"
+   }
+  },
+  "di data_3": {
+   "k": "lavori.titolo_data",
+   "se": {
+    "lavori.titolo_tipo": "CILA"
+   }
+  },
+  "undefined_6": {
+   "k": "lavori.titolo_tipo",
+   "v": "Comunicazione opere libere"
+  },
+  "provvedimentopratica n_4": {
+   "k": "lavori.titolo_n",
+   "se": {
+    "lavori.titolo_tipo": "Comunicazione opere libere"
+   }
+  },
+  "di data_4": {
+   "k": "lavori.titolo_data",
+   "se": {
+    "lavori.titolo_tipo": "Comunicazione opere libere"
+   }
+  },
+  "impresa esecutrice ad integrazione delle imprese già nominate da individuare prima dellinizio lavori": {
+   "k": "lavori.modifica_impresa",
+   "v": "Impresa ad integrazione"
+  },
+  "undefined_7": {
+   "k": "lavori.modifica_impresa",
+   "v": "Impresa subentrante"
+  }
+ }
+}

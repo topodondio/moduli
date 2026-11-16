@@ -1,0 +1,50 @@
+{
+ "modulo": "04.PERMESSO_DI_COSTRUIRE_RELAZIONE_TECNICA_DI_ASSEVERAZIONE.pdf",
+ "titolo": "Permesso di costruire – relazione tecnica di asseverazione",
+ "gruppo": "Titoli edilizi",
+ "ordine": 41,
+ "campi": {
+  "Comune di": {
+   "k": "pratica.comune"
+  },
+  "indirizzo pec": {
+   "k": "comune.pec"
+  },
+  "richieste devono essere rivolte al Comune di": {
+   "k": "pratica.comune"
+  },
+  "indirizzo mail": {
+   "k": "comune.pec"
+  },
+  "Illa sottoscrittoa dichiara di aver letto linformativa sul trattamento dei dati personali": {
+   "k": "pratica.dichiarazioni"
+  },
+  "Cognome e Nome": {
+   "t": "{progettista.cognome} {progettista.nome}"
+  },
+  "Iscritto allordinecollegio": {
+   "t": "{progettista.albo} di {progettista.albo_di} n. {progettista.albo_n}"
+  },
+  "Informativa completa e altre informazioni sono disponibili presso Comune di": {
+   "k": "pratica.comune"
+  },
+  "e che consistono in": {
+   "k": "pratica.oggetto"
+  },
+  "Mq_2": {
+   "k": "intervento.sun"
+  },
+  "Mc": {
+   "k": "intervento.volume"
+  },
+  "n_2": {
+   "k": "intervento.piani"
+  },
+  "PRG vigente zona": {
+   "k": "immobile.zona_prg"
+  },
+  "Progetto in fase di sviluppo PRG DIG": {
+   "k": "immobile.zona_prg_adottato"
+  }
+ }
+}

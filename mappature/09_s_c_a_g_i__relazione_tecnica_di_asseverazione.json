@@ -1,0 +1,101 @@
+{
+ "modulo": "09.S.C.A.G.I._RELAZIONE_TECNICA_DI_ASSEVERAZIONE.pdf",
+ "titolo": "SCAGI – relazione tecnica di asseverazione",
+ "gruppo": "Fine lavori e agibilità",
+ "ordine": 91,
+ "campi": {
+  "Comune di": {
+   "k": "pratica.comune"
+  },
+  "indirizzo pec": {
+   "k": "comune.pec"
+  },
+  "devono essere rivolte al Comune di": {
+   "k": "pratica.comune"
+  },
+  "indirizzo mail": {
+   "k": "comune.pec"
+  },
+  "Illa sottoscrittoa dichiara di aver letto linformativa sul trattamento dei dati personali": {
+   "k": "pratica.dichiarazioni"
+  },
+  "Cognome e Nome": {
+   "t": "{dl.cognome} {dl.nome}"
+  },
+  "codice fiscale": {
+   "k": "dl.cf"
+  },
+  "nato a": {
+   "k": "dl.nascita_comune"
+  },
+  "prov": {
+   "k": "dl.nascita_prov"
+  },
+  "stato": {
+   "k": "dl.nascita_stato"
+  },
+  "nato il": {
+   "k": "dl.data_nascita"
+  },
+  "residente in": {
+   "k": "dl.res_comune"
+  },
+  "prov_2": {
+   "k": "dl.res_prov"
+  },
+  "stato_2": {
+   "k": "dl.res_stato"
+  },
+  "indirizzo": {
+   "t": "{dl.res_dug} {dl.res_via}"
+  },
+  "n": {
+   "k": "dl.res_civico"
+  },
+  "CAP": {
+   "k": "dl.res_cap"
+  },
+  "con studio in": {
+   "k": "dl.studio_comune"
+  },
+  "prov_3": {
+   "k": "dl.studio_prov"
+  },
+  "stato_3": {
+   "k": "dl.studio_stato"
+  },
+  "indirizzo_2": {
+   "k": "dl.studio_via"
+  },
+  "n_2": {
+   "k": "dl.studio_civico"
+  },
+  "CAP_2": {
+   "k": "dl.studio_cap"
+  },
+  "Iscritto allordinecollegio": {
+   "k": "dl.albo"
+  },
+  "di": {
+   "k": "dl.albo_di"
+  },
+  "al n": {
+   "k": "dl.albo_n"
+  },
+  "Testo2": {
+   "k": "dl.tel"
+  },
+  "Testo4": {
+   "k": "dl.fax"
+  },
+  "Testo3": {
+   "k": "dl.cell"
+  },
+  "Testo1": {
+   "k": "dl.pec"
+  },
+  "Informativa completa e altre informazioni sono disponibili presso Comune di": {
+   "k": "pratica.comune"
+  }
+ }
+}

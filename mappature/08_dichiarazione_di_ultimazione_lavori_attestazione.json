@@ -1,0 +1,38 @@
+{
+ "modulo": "08.DICHIARAZIONE_DI_ULTIMAZIONE_LAVORI_Attestazione.pdf",
+ "titolo": "Ultimazione lavori – attestazione del direttore lavori",
+ "gruppo": "Fine lavori e agibilità",
+ "ordine": 81,
+ "campi": {
+  "Comune di": {
+   "k": "pratica.comune"
+  },
+  "indirizzo pec": {
+   "k": "comune.pec"
+  },
+  "devono essere rivolte al Comune di": {
+   "k": "pratica.comune"
+  },
+  "indirizzo mail": {
+   "k": "comune.pec"
+  },
+  "Illa sottoscrittoa dichiara di aver letto linformativa sul trattamento dei dati personali": {
+   "k": "pratica.dichiarazioni"
+  },
+  "Cognome e Nome": {
+   "t": "{dl.cognome} {dl.nome}"
+  },
+  "Iscritto allordinecollegio": {
+   "k": "dl.albo"
+  },
+  "di": {
+   "k": "dl.albo_di"
+  },
+  "al n": {
+   "k": "dl.albo_n"
+  },
+  "Informativa completa e altre informazioni sono disponibili presso Comune di": {
+   "k": "pratica.comune"
+  }
+ }
+}

@@ -1,0 +1,79 @@
+{
+ "modulo": "ISTAT_REv01_2026.pdf",
+ "titolo": "ISTAT – modello RE (residenziale)",
+ "gruppo": "Statistiche",
+ "ordine": 200,
+ "campi": {
+  "Comune_amministrativo": {
+   "k": "pratica.comune",
+   "combo": "prefisso"
+  },
+  "Tipologia_titolo_abilitativo": {
+   "k": "lavori.titolo_tipo",
+   "mappa": {
+    "Permesso di costruire": "1. Permesso di costruire",
+    "SCIA": "4. SCIA",
+    "CILA": "5. CILA"
+   }
+  },
+  "Dt_presentazione": {
+   "k": "pratica.data_presentazione",
+   "fmt": "mese"
+  },
+  "Dt_presentazione_AAAA": {
+   "k": "pratica.data_presentazione",
+   "fmt": "anno"
+  },
+  "Comune_catastale": {
+   "k": "calc.cc",
+   "combo": "prefisso"
+  },
+  "PE-numeratore": {
+   "k": "calc.ped_num"
+  },
+  "PE-denominatore": {
+   "k": "calc.ped_den"
+  },
+  "PM": {
+   "k": "calc.ped_pm"
+  },
+  "Sub": {
+   "k": "calc.ped_sub"
+  },
+  "PF-numeratore": {
+   "k": "calc.pf_num"
+  },
+  "PF-denominatore": {
+   "k": "calc.pf_den"
+  },
+  "Altre_PE": {
+   "k": "calc.altre_ped"
+  },
+  "Altre_PF": {
+   "k": "calc.altre_pf"
+  },
+  "LOCALIZZAZIONE": {
+   "k": "calc.via_tipo",
+   "combo": "esatto"
+  },
+  "Denominazione_stradale": {
+   "k": "calc.via_nome"
+  },
+  "Dt_presunta_iniziolavori": {
+   "k": "lavori.data_inizio"
+  },
+  "Durata_lav": {
+   "k": "intervento.durata"
+  },
+  "Dati_Titolare": {
+   "k": "titolare.tipo",
+   "radio": {
+    "Persona": "1",
+    "Società": "2"
+   }
+  },
+  "Costo_intervento": {
+   "k": "intervento.costo"
+  }
+ }
+}

@@ -1,0 +1,44 @@
+{
+ "modulo": "02.C.I.L.A._RELAZIONE_TECNICA_DI_ASSEVERAZIONE.pdf",
+ "titolo": "CILA – relazione tecnica di asseverazione",
+ "gruppo": "Titoli edilizi",
+ "ordine": 21,
+ "campi": {
+  "Comune di": {
+   "k": "pratica.comune"
+  },
+  "indirizzo pec": {
+   "k": "comune.pec"
+  },
+  "devono essere rivolte al Comune di": {
+   "k": "pratica.comune"
+  },
+  "indirizzo mail": {
+   "k": "comune.pec"
+  },
+  "Illa sottoscrittoa dichiara di aver letto linformativa sul trattamento dei dati personali": {
+   "k": "pratica.dichiarazioni"
+  },
+  "Cognome e Nome": {
+   "t": "{progettista.cognome} {progettista.nome}"
+  },
+  "Iscritto allordinecollegio": {
+   "k": "progettista.albo"
+  },
+  "di": {
+   "k": "progettista.albo_di"
+  },
+  "al n": {
+   "k": "progettista.albo_n"
+  },
+  "Informativa completa e altre informazioni sono disponibili presso Comune di": {
+   "k": "pratica.comune"
+  },
+  "PRG vigente zona": {
+   "k": "immobile.zona_prg"
+  },
+  "PRG adottato zona": {
+   "k": "immobile.zona_prg_adottato"
+  }
+ }
+}
