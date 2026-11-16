@@ -444,14 +444,25 @@ class Modulo:
         self.pdf = Path(pdf)
         self.map = mappatura or {}
         self.file_mappatura = file_mappatura
+        self.copia = 0  # 0 = il modulo; 2, 3… = altre copie dello stesso modulo nella pratica
 
     @property
     def id(self):
+        return self.pdf.stem + (f"__copia{self.copia}" if self.copia else "")
+
+    @property
+    def id_base(self):
         return self.pdf.stem
 
     @property
     def titolo(self):
-        return self.map.get("titolo") or self.pdf.stem.replace("_", " ")
+        t = self.map.get("titolo") or self.pdf.stem.replace("_", " ")
+        return f"{t} (copia {self.copia})" if self.copia else t
+
+    def come_copia(self, n):
+        m = Modulo(self.pdf, self.map, self.file_mappatura)
+        m.copia = n
+        return m
 
     @property
     def tipo(self):
@@ -469,6 +480,21 @@ class Modulo:
     @property
     def edizione(self):
         return self.map.get("edizione", "Altri moduli")
+
+
+def separa_copia(mod_id):
+    """'NOME__copia3' → ('NOME', 3); 'NOME' → ('NOME', 0)."""
+    m = re.match(r"^(.*)__copia(\d+)$", mod_id or "")
+    return (m.group(1), int(m.group(2))) if m else (mod_id, 0)
+
+
+def prossima_copia(pratica, modulo):
+    """Numero della prossima copia libera di un modulo nella pratica (2, 3, …)."""
+    usati = {separa_copia(k)[1] or 1 for k in pratica.dati.get("_moduli", {}) if separa_copia(k)[0] == modulo.id_base}
+    n = 2
+    while n in usati:
+        n += 1
+    return n
 
 
 def elenco_moduli(archivio=None):
@@ -646,7 +672,8 @@ def _archivia_precedente(pratica, modulo, out):
 def genera(pratica, modulo):
     """Compila il modulo. Se esiste già una versione compilata, i campi che il programma
     non gestisce (scelte tecniche, spunte fatte a mano nel PDF…) vengono conservati."""
-    out = pratica.cartella_modulo(modulo.id) / f"{modulo.id}.pdf"
+    nome = f"{modulo.id_base} (copia {modulo.copia}).pdf" if modulo.copia else f"{modulo.id}.pdf"
+    out = pratica.file_modulo(modulo.id, None if pratica.dati.get("_moduli", {}).get(modulo.id) else nome)
     out.parent.mkdir(parents=True, exist_ok=True)
     conserva = None
     if out.exists() and modulo.tipo == "acroform":
@@ -887,7 +914,8 @@ def differenze(pratica, proposte):
 
 def importa_modulo(pratica, modulo, pdf):
     """Copia un modulo compilato fuori dal programma nella cartella Moduli della pratica."""
-    out = pratica.cartella_modulo(modulo.id) / f"{modulo.id}.pdf"
+    nome = f"{modulo.id_base} (copia {modulo.copia}).pdf" if modulo.copia else f"{modulo.id}.pdf"
+    out = pratica.file_modulo(modulo.id, None if pratica.dati.get("_moduli", {}).get(modulo.id) else nome)
     out.parent.mkdir(parents=True, exist_ok=True)
     if Path(pdf).resolve() != out.resolve():
         _archivia_precedente(pratica, modulo, out)

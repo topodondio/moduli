@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QSize, QTimer, Signal, QObject, QDir, QUrl, QFileSystemWatcher, QEvent
-from PySide6.QtGui import QDesktopServices, QIcon, QCursor, QAction
+from PySide6.QtGui import QColor, QDesktopServices, QIcon, QCursor, QAction
 from PySide6.QtWidgets import (QMainWindow, QApplication, QToolButton, QDialog, QComboBox, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QListWidget,
                                QListWidgetItem, QPushButton, QTabWidget, QStackedWidget, QScrollArea, QFormLayout,
                                QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox,
@@ -227,14 +227,23 @@ class SceltaModulo(QDialog):
         super().__init__(parent)
         from PySide6.QtWidgets import QTreeWidget, QTreeWidgetItem
         self.setWindowTitle("Scegli il modulo da compilare")
-        self.resize(600, 620)
+        self.resize(680, 620)
         lay = QVBoxLayout(self)
         self.cerca = QLineEdit()
         self.cerca.setPlaceholderText("Cerca un modulo…")
         lay.addWidget(self.cerca)
         self.albero = QTreeWidget()
-        self.albero.setHeaderHidden(True)
+        self.albero.setColumnCount(2)
+        self.albero.setHeaderLabels(["Modulo", "Nella pratica"])
         self.albero.setObjectName("alberoModuli")
+        from PySide6.QtWidgets import QHeaderView
+        self.albero.header().setStretchLastSection(False)
+        self.albero.header().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.albero.header().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        quante = {}
+        for k in gia:
+            b = core.separa_copia(k)[0]
+            quante[b] = quante.get(b, 0) + 1
         edizioni = sorted({m.edizione for m in moduli},
                           key=lambda e: (ORDINE_EDIZIONI.index(e) if e in ORDINE_EDIZIONI else 99, e))
         for ed in edizioni:
@@ -261,7 +270,11 @@ class SceltaModulo(QDialog):
                     nodo_ed.addChild(padre)
                 for m in del_ed:
                     if m.gruppo == g:
-                        it = QTreeWidgetItem([m.titolo + ("   ✓ già nella pratica" if m.id in gia else "")])
+                        n = quante.get(m.id, 0)
+                        it = QTreeWidgetItem([m.titolo, ("✓ già presente" + (f" ({n})" if n > 1 else "")) if n else ""])
+                        if n:
+                            it.setForeground(1, QColor("#2f7d6d"))
+                            it.setToolTip(1, "È già nella pratica: puoi aprirlo oppure compilarne un'altra copia")
                         it.setData(0, Qt.UserRole, m.id)
                         it.setToolTip(0, m.pdf.name)
                         padre.addChild(it)
@@ -407,10 +420,27 @@ class SchedaModuli(QWidget):
         self.f.scheda_dati.salva_subito()
         moduli = [m for m in core.elenco_moduli(self.f.archivio) if m.mappato]
         moduli.sort(key=lambda m: m.map.get("ordine", 500))
-        d = SceltaModulo(moduli, set(self.pratica.dati.get("_moduli", {})), self)
+        gia = set(self.pratica.dati.get("_moduli", {}))
+        d = SceltaModulo(moduli, gia, self)
         if not d.exec() or not d.scelto():
             return
-        self.apri(d.scelto())
+        scelto = d.scelto()
+        if scelto in gia:
+            m = self.f._modulo_per_id(scelto)
+            r = QMessageBox(self)
+            r.setWindowTitle("Modulo già nella pratica")
+            r.setIcon(QMessageBox.Question)
+            r.setText(f"<b>{m.titolo}</b> è già nella pratica.<br><br>Vuoi aprire quello che c'è "
+                      "oppure compilarne un'altra copia (ad esempio per un secondo titolare o un'altra impresa)?")
+            b_apri = r.addButton("Apri quello che c'è", QMessageBox.AcceptRole)
+            b_copia = r.addButton("Compila un'altra copia", QMessageBox.ActionRole)
+            r.addButton("Annulla", QMessageBox.RejectRole)
+            r.exec()
+            if r.clickedButton() is b_copia:
+                scelto = m.come_copia(core.prossima_copia(self.pratica, m)).id
+            elif r.clickedButton() is not b_apri:
+                return
+        self.apri(scelto)
 
     def apri(self, mod_id):
         """Apre il modulo nel programma PDF; se non c'è ancora, o se i dati della pratica sono cambiati,
@@ -847,9 +877,10 @@ class Finestra(QMainWindow):
         super().changeEvent(e)
 
     def _modulo_per_id(self, mod_id):
+        base, n = core.separa_copia(mod_id)
         for m in core.elenco_moduli(self.archivio):
-            if m.id == mod_id:
-                return m
+            if m.id == base:
+                return m.come_copia(n) if n else m
         return None
 
     def _rivedi_dati(self, modulo, pdf, intro=None):
