@@ -340,3 +340,84 @@ class InsegnaModulo(QDialog):
         dest = self.archivio.cartella_mappature() / (self.modulo.pdf.stem + ".json")
         core.scrivi_json(dest, dati)
         super().accept()
+
+
+# --------------------------------------------------------------------------- dati letti da un PDF
+
+def _mostra(v):
+    if isinstance(v, bool):
+        return "Sì" if v else "No"
+    return str(v or "—")
+
+
+class AggiornaDati(QDialog):
+    """Mostra i dati trovati in un PDF compilato e lascia scegliere quali salvare nella pratica."""
+
+    def __init__(self, pratica, diff, titolo_modulo, intro=None, altri_moduli=0, parent=None):
+        super().__init__(parent)
+        self.pratica, self.diff = pratica, diff
+        self.setWindowTitle(f"Dati da: {titolo_modulo}")
+        self.resize(900, 600)
+        lay = QVBoxLayout(self)
+        t = QLabel(intro or f"Nel PDF <b>{titolo_modulo}</b> ci sono {len(diff)} dati diversi da quelli della pratica. "
+                   "Scegli quali salvare: verranno usati anche per gli altri moduli.")
+        t.setWordWrap(True)
+        lay.addWidget(t)
+        self.tab = QTableWidget(len(diff), 4)
+        self.tab.setHorizontalHeaderLabels(["Salva", "Dato", "Ora nella pratica", "Nel PDF"])
+        self.tab.verticalHeader().setVisible(False)
+        hh = self.tab.horizontalHeader()
+        hh.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        hh.setSectionResizeMode(1, QHeaderView.Stretch)
+        hh.setSectionResizeMode(2, QHeaderView.Stretch)
+        hh.setSectionResizeMode(3, QHeaderView.Stretch)
+        self.tab.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        for i, (k, vecchio, nuovo) in enumerate(diff):
+            ck = QTableWidgetItem()
+            ck.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
+            ck.setCheckState(Qt.Checked)
+            self.tab.setItem(i, 0, ck)
+            sez, c = CAMPI[k]
+            self.tab.setItem(i, 1, QTableWidgetItem(f"{sez['l']} › {c['l']}"))
+            it = QTableWidgetItem(_mostra(vecchio))
+            it.setForeground(Qt.gray)
+            self.tab.setItem(i, 2, it)
+            it = QTableWidgetItem(_mostra(nuovo))
+            f = it.font()
+            f.setBold(True)
+            it.setFont(f)
+            self.tab.setItem(i, 3, it)
+        lay.addWidget(self.tab)
+        h = QHBoxLayout()
+        b = QPushButton("Seleziona tutto")
+        b.clicked.connect(lambda: self._tutti(True))
+        h.addWidget(b)
+        b = QPushButton("Deseleziona tutto")
+        b.clicked.connect(lambda: self._tutti(False))
+        h.addWidget(b)
+        h.addStretch()
+        lay.addLayout(h)
+        self.ricompila = None
+        if altri_moduli:
+            from PySide6.QtWidgets import QCheckBox
+            self.ricompila = QCheckBox(f"Aggiorna anche gli altri {altri_moduli} moduli già compilati "
+                                       "(le spunte e i campi scritti a mano restano)")
+            self.ricompila.setChecked(True)
+            lay.addWidget(self.ricompila)
+        lay.addWidget(_bottoni(self, "Salva nella pratica", "Non salvare"))
+
+    def _tutti(self, si):
+        for i in range(self.tab.rowCount()):
+            self.tab.item(i, 0).setCheckState(Qt.Checked if si else Qt.Unchecked)
+
+    def accept(self):
+        self.applicati = 0
+        for i, (k, _v, nuovo) in enumerate(self.diff):
+            if self.tab.item(i, 0).checkState() == Qt.Checked:
+                self.pratica.set(k, nuovo)
+                self.applicati += 1
+        self.pratica.salva()
+        super().accept()
+
+    def ricompila_altri(self):
+        return bool(self.ricompila and self.ricompila.isChecked())

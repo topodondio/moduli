@@ -4,7 +4,7 @@ import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer, QDir, QUrl
+from PySide6.QtCore import Qt, QTimer, QDir, QUrl, QFileSystemWatcher, QEvent
 from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtWidgets import (QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QListWidget,
                                QListWidgetItem, QPushButton, QTabWidget, QStackedWidget, QScrollArea, QFormLayout,
@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, Q
 from . import core
 from .schema import SEZIONI, CAMPI
 from .widgets import Campo
-from .dialoghi import NuovaPratica, DatiMancanti, Comuni, SceltaRubrica, InsegnaModulo
+from .dialoghi import NuovaPratica, DatiMancanti, Comuni, SceltaRubrica, InsegnaModulo, AggiornaDati
 
 
 def bottone(testo, slot, primario=False, tip=None):
@@ -224,7 +224,8 @@ class SchedaModuli(QWidget):
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 14, 16, 14)
         n = QLabel("Scegli un modulo e premi <b>Compila</b>: ti verranno chiesti solo i dati che mancano. "
-                   "I PDF compilati restano modificabili e vengono salvati nella cartella <i>Moduli</i> della pratica.")
+                   "Puoi anche aprire il PDF e scriverci direttamente: quando lo salvi, Fascicolo legge i dati nuovi "
+                   "e ti propone di aggiornarli nella pratica. Se hai già un modulo compilato, usa <b>Carica modulo compilato</b>.")
         n.setWordWrap(True)
         n.setObjectName("nota")
         lay.addWidget(n)
@@ -243,7 +244,9 @@ class SchedaModuli(QWidget):
         lay.addWidget(self.tab)
         h = QHBoxLayout()
         h.addWidget(bottone("Compila", self.compila, True))
-        h.addWidget(bottone("Apri PDF compilato", self.apri))
+        h.addWidget(bottone("Apri PDF", self.apri, tip="Apri il PDF per controllarlo o scriverci: i dati salvati tornano nella pratica"))
+        h.addWidget(bottone("Carica modulo compilato…", self.carica_compilato,
+                            tip="Porta nella pratica un modulo già compilato e ne legge i dati"))
         h.addWidget(bottone("Mostra dati mancanti", self.mostra_mancanti))
         h.addWidget(bottone("Ricompila tutti i già compilati", self.ricompila_tutti,
                             tip="Utile dopo aver corretto un dato: aggiorna tutti i moduli già generati"))
@@ -271,7 +274,8 @@ class SchedaModuli(QWidget):
                 st = QTableWidgetItem("pronto" if not manc else f"mancano {len(manc)} dati")
                 st.setForeground(Qt.darkGreen if not manc else Qt.darkYellow)
             self.tab.setItem(r, 2, st)
-            self.tab.setItem(r, 3, QTableWidgetItem(fatti.get(m.id, {}).get("data", "")))
+            info = fatti.get(m.id, {})
+            self.tab.setItem(r, 3, QTableWidgetItem(info.get("data", "") + ("  (caricato)" if info.get("importato") else "")))
 
     def _sel(self):
         r = self.tab.currentRow()
@@ -313,6 +317,14 @@ class SchedaModuli(QWidget):
                 core.apri_con_sistema(f)
             else:
                 QMessageBox.information(self, "Apri", "Questo modulo non è ancora stato compilato per la pratica.")
+
+    def carica_compilato(self):
+        if not self.pratica:
+            return
+        files, _ = QFileDialog.getOpenFileNames(self, "Carica moduli già compilati", "", "PDF (*.pdf)")
+        for f in files:
+            self.f.importa_pdf(Path(f))
+        self.carica(self.pratica)
 
     def mostra_mancanti(self):
         m = self._sel()
@@ -398,9 +410,19 @@ class SchedaDocumenti(QWidget):
         sotto, ok = QInputDialog.getItem(self, "Dove?", "Copia nella cartella:", core.SOTTOCARTELLE, 1, False)
         if not ok:
             return
+        copiati = 0
         for f in files:
+            if f.lower().endswith(".pdf"):
+                m, _s = core.riconosci_modulo(f, core.elenco_moduli(self.f.archivio))
+                if m and m.mappato and QMessageBox.question(
+                        self, "Modulo riconosciuto",
+                        f"«{Path(f).name}» è il modulo «{m.titolo}».\n"
+                        "Vuoi caricarlo come modulo della pratica e leggerne i dati?") == QMessageBox.Yes:
+                    self.f.importa_pdf(Path(f))
+                    continue
             shutil.copy2(f, self.pratica.cartella / sotto / Path(f).name)
-        self.f.stato(f"Copiati {len(files)} file in {sotto}")
+            copiati += 1
+        self.f.stato(f"Copiati {copiati} file in {sotto}")
 
 
 # =========================================================================== scheda consegna
@@ -614,7 +636,112 @@ class Finestra(QMainWindow):
         self.statusBar().showMessage("Pronto")
 
         self.tabs.setEnabled(False)
+        self.watcher = QFileSystemWatcher(self)
+        self.watcher.directoryChanged.connect(lambda *_: self.t_controllo.start())
+        self.watcher.fileChanged.connect(lambda *_: self.t_controllo.start())
+        self.t_controllo = QTimer(self)
+        self.t_controllo.setSingleShot(True)
+        self.t_controllo.setInterval(1500)
+        self.t_controllo.timeout.connect(self.controlla_pdf_modificati)
+        self._in_controllo = False
         self.ricarica_elenco()
+
+    # ------------------------------------------------------------------ PDF scritti fuori dal programma
+    def _sorveglia(self):
+        vecchi = self.watcher.files() + self.watcher.directories()
+        if vecchi:
+            self.watcher.removePaths(vecchi)
+        if not self.pratica:
+            return
+        d = self.pratica.cartella / "Moduli"
+        if d.exists():
+            self.watcher.addPath(str(d))
+            pdf = [str(f) for f in d.glob("*.pdf")]
+            if pdf:
+                self.watcher.addPaths(pdf)
+
+    def changeEvent(self, e):
+        if e.type() == QEvent.ActivationChange and self.isActiveWindow() and self.pratica:
+            self.t_controllo.start(300)
+        super().changeEvent(e)
+
+    def _modulo_per_id(self, mod_id):
+        for m in core.elenco_moduli(self.archivio):
+            if m.id == mod_id:
+                return m
+        return None
+
+    def _rivedi_dati(self, modulo, pdf, intro=None):
+        """Legge un PDF, propone i dati diversi e li salva. Ritorna True se ha cambiato la pratica."""
+        try:
+            prop = core.estrai_dati(self.pratica, modulo, core.leggi_valori(pdf))
+        except Exception as e:  # noqa
+            QMessageBox.warning(self, "Lettura PDF", f"Non riesco a leggere «{Path(pdf).name}»:\n{e}")
+            return False
+        diff = core.differenze(self.pratica, prop)
+        if not diff:
+            self.stato(f"«{modulo.titolo}»: nessun dato nuovo da salvare")
+            return False
+        fatti = self.pratica.dati.get("_moduli", {})
+        altri = [m for m in core.elenco_moduli(self.archivio) if m.id in fatti and m.id != modulo.id and m.mappato]
+        d = AggiornaDati(self.pratica, diff, modulo.titolo, intro, len(altri), self)
+        if not d.exec() or not d.applicati:
+            return False
+        self.scheda_dati.carica(self.pratica)
+        self.aggiorna_intestazione()
+        if d.ricompila_altri():
+            errori = []
+            for m in altri:
+                try:
+                    core.genera(self.pratica, m)
+                except Exception as e:  # noqa – ad esempio il PDF è aperto in Acrobat
+                    errori.append(f"{m.titolo}: {e}")
+            if errori:
+                QMessageBox.warning(self, "Aggiornamento moduli",
+                                    "Alcuni moduli non sono stati aggiornati (forse sono aperti in un altro "
+                                    "programma):\n\n" + "\n".join(errori))
+        self.stato(f"Salvati {d.applicati} dati da «{modulo.titolo}»")
+        return True
+
+    def controlla_pdf_modificati(self):
+        if not self.pratica or self._in_controllo:
+            return
+        self._in_controllo = True
+        try:
+            for mod_id, f in core.moduli_modificati(self.pratica):
+                core.segna_letto(self.pratica, mod_id)
+                self.pratica.salva()
+                m = self._modulo_per_id(mod_id)
+                if m and m.mappato:
+                    self._rivedi_dati(m, f, f"Hai modificato e salvato il PDF <b>{m.titolo}</b>. "
+                                            "Questi dati sono diversi da quelli della pratica: scegli quali salvare.")
+            self._sorveglia()
+            w = self.tabs.currentWidget()
+            if w is not self.scheda_dati and self.pratica:
+                w.carica(self.pratica)
+        finally:
+            self._in_controllo = False
+
+    def importa_pdf(self, pdf):
+        moduli = core.elenco_moduli(self.archivio)
+        m, punteggio = core.riconosci_modulo(pdf, moduli)
+        if not m:
+            if QMessageBox.question(self, "Modulo non riconosciuto",
+                                    f"«{pdf.name}» non corrisponde a nessun modello di Fascicolo "
+                                    "(potrebbe essere una versione diversa del modulo).\n"
+                                    "Vuoi copiarlo comunque negli Allegati della pratica?") == QMessageBox.Yes:
+                shutil.copy2(pdf, self.pratica.cartella / "Allegati" / pdf.name)
+            return
+        self._in_controllo = True
+        try:
+            out = core.importa_modulo(self.pratica, m, pdf)
+        finally:
+            self._in_controllo = False
+        self._sorveglia()
+        if m.mappato:
+            self._rivedi_dati(m, out, f"Ho caricato <b>{m.titolo}</b> nella pratica. Questi sono i dati trovati "
+                                      "nel PDF che mancano o sono diversi nella pratica: scegli quali salvare.")
+        self.stato(f"«{pdf.name}» caricato come «{m.titolo}»")
 
     # ------------------------------------------------------------------
     def stato(self, msg):
@@ -656,6 +783,8 @@ class Finestra(QMainWindow):
         self.scheda_dati.evidenzia(set())
         self.aggiorna_intestazione()
         self._cambio_tab(self.tabs.currentIndex())
+        self._sorveglia()
+        self.t_controllo.start(300)
 
     def aggiorna_intestazione(self):
         p = self.pratica

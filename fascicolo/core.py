@@ -152,9 +152,15 @@ class Pratica:
         self.dati["_modificata"] = datetime.now().strftime("%d/%m/%Y %H:%M")
         scrivi_json(self.cartella / FILE_PRATICA, self.dati)
 
-    def registra_modulo(self, mod_id, file_out):
-        self.dati["_moduli"][mod_id] = {"file": str(Path(file_out).name),
-                                        "data": datetime.now().strftime("%d/%m/%Y %H:%M")}
+    def registra_modulo(self, mod_id, file_out, importato=False):
+        info = {"file": str(Path(file_out).name), "data": datetime.now().strftime("%d/%m/%Y %H:%M")}
+        if importato:
+            info["importato"] = True
+        try:
+            info["mtime"] = Path(file_out).stat().st_mtime
+        except OSError:
+            pass
+        self.dati["_moduli"][mod_id] = info
 
 
 class Archivio:
@@ -339,7 +345,7 @@ def dati_mancanti(pratica, modulo):
     return sorted(serve, key=lambda k: ordine.index(k) if k in ordine else 9999)
 
 
-def compila(pratica, modulo, uscita):
+def compila(pratica, modulo, uscita, conserva=None):
     """Compila il PDF del modulo con i dati della pratica. Ritorna (compilati, totale).
 
     Il file di uscita è una copia esatta del modulo originale a cui vengono solo aggiunti
@@ -353,6 +359,8 @@ def compila(pratica, modulo, uscita):
         for w in page.widgets():
             r = regole.get(w.field_name)
             if not r:
+                if conserva and w.field_name in conserva:
+                    _scrivi_valore(w, conserva[w.field_name])
                 continue
             if not _condizione_ok(pratica, r.get("se")):
                 val_t, val_c = "", False
@@ -399,17 +407,241 @@ def compila(pratica, modulo, uscita):
     return n, len(regole)
 
 
-def genera(pratica, modulo):
-    nome = f"{modulo.id}.pdf"
-    out = pratica.cartella / "Moduli" / nome
+def _archivia_precedente(pratica, modulo, out):
     if out.exists():  # tieni la versione precedente
         old = pratica.cartella / "Moduli" / "_precedenti"
         old.mkdir(exist_ok=True)
         shutil.copy2(out, old / f"{modulo.id}_{datetime.now():%Y%m%d-%H%M%S}.pdf")
-    res = compila(pratica, modulo, out)
+
+
+def genera(pratica, modulo):
+    """Compila il modulo. Se esiste già una versione compilata, i campi che il programma
+    non gestisce (scelte tecniche, spunte fatte a mano nel PDF…) vengono conservati."""
+    out = pratica.cartella / "Moduli" / f"{modulo.id}.pdf"
+    conserva = None
+    if out.exists():
+        regole = modulo.map.get("campi", {})
+        try:
+            conserva = {k: v for k, v in leggi_valori(out).items() if k not in regole}
+        except Exception:
+            conserva = None
+    _archivia_precedente(pratica, modulo, out)
+    res = compila(pratica, modulo, out, conserva)
     pratica.registra_modulo(modulo.id, out)
     pratica.salva()
     return out, res
+
+
+# --------------------------------------------------------------------------- lettura dei PDF compilati
+
+def _scrivi_valore(w, v):
+    try:
+        if w.field_type == pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON:
+            if v is not None and str(w.on_state()) == str(v):
+                w.field_value = True
+                w.update()
+            return
+        if w.field_type == pymupdf.PDF_WIDGET_TYPE_CHECKBOX:
+            w.field_value = w.on_state() if v else "Off"
+        elif w.field_type in (pymupdf.PDF_WIDGET_TYPE_TEXT, pymupdf.PDF_WIDGET_TYPE_COMBOBOX):
+            w.field_value = str(v or "")
+        else:
+            return
+        w.update()
+    except Exception:
+        pass
+
+
+def leggi_valori(pdf):
+    """Valori dei campi di un PDF: testo -> str, casella -> bool, gruppo radio -> stato scelto."""
+    doc = pymupdf.open(pdf)
+    out = {}
+    try:
+        for page in doc:
+            for w in page.widgets():
+                n = w.field_name
+                t = w.field_type
+                v = w.field_value
+                if t == pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON:
+                    if v not in (None, "", "Off", False) and str(v) == str(w.on_state()):
+                        out[n] = str(w.on_state())
+                    else:
+                        out.setdefault(n, None)
+                elif t == pymupdf.PDF_WIDGET_TYPE_CHECKBOX:
+                    acceso = v not in (None, "", "Off", False, "false")
+                    out[n] = out.get(n, False) or acceso
+                elif t in (pymupdf.PDF_WIDGET_TYPE_TEXT, pymupdf.PDF_WIDGET_TYPE_COMBOBOX):
+                    s = str(v or "").strip()
+                    if s or n not in out:
+                        out[n] = s
+    finally:
+        doc.close()
+    return out
+
+
+def firma_campi(pdf):
+    doc = pymupdf.open(pdf)
+    try:
+        return doc.page_count, {w.field_name for p in doc for w in p.widgets()}
+    finally:
+        doc.close()
+
+
+def riconosci_modulo(pdf, moduli):
+    """Trova a quale modello corrisponde un PDF compilato confrontando i nomi dei campi."""
+    try:
+        pagine, nomi = firma_campi(pdf)
+    except Exception:
+        return None, 0.0
+    if not nomi:
+        return None, 0.0
+    migliore, punteggio = None, 0.0
+    for m in moduli:
+        try:
+            pg, nm = firma_campi(m.pdf)
+        except Exception:
+            continue
+        if not nm or pg != pagine:
+            continue
+        s = len(nomi & nm) / len(nomi | nm)
+        if s > punteggio:
+            migliore, punteggio = m, s
+    return (migliore, punteggio) if punteggio >= 0.9 else (None, punteggio)
+
+
+class _Sovrapposizione:
+    """Pratica con dei valori proposti sopra: serve a valutare le condizioni delle regole."""
+    def __init__(self, pratica, proposte):
+        self.p, self.prop = pratica, proposte
+
+    def get(self, k):
+        if k in self.prop:
+            return self.prop[k]
+        return self.p.get(k)
+
+
+def _scrivibile(k):
+    return k in CAMPI and not k.startswith(("calc.", "comune."))
+
+
+def estrai_dati(pratica, modulo, valori):
+    """Ricava i dati della pratica dai valori di un modulo compilato (mappatura al contrario).
+    Ritorna {chiave: valore}."""
+    regole = modulo.map.get("campi", {})
+    prop, origine = {}, {}
+
+    def proponi(k, v, campo):
+        if not _scrivibile(k):
+            return
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return
+        if k in prop and prop[k] != v:
+            return  # il primo valore trovato vince
+        prop[k] = v
+        origine[k] = campo
+
+    # 1) caselle e pulsanti: decidono le scelte (persona/società, tipo titolo…)
+    for nome, r in regole.items():
+        if nome not in valori or "k" not in r:
+            continue
+        val = valori[nome]
+        k = r["k"]
+        if "radio" in r:
+            inv = {str(s): v for v, s in r["radio"].items()}
+            if val is not None and str(val) in inv:
+                proponi(k, inv[str(val)], nome)
+        elif isinstance(val, bool) and not r.get("pieno"):
+            if "v" in r:
+                if val and not isinstance(r["v"], list):
+                    proponi(k, r["v"], nome)
+            else:
+                tipo = CAMPI.get(k, (None, {}))[1].get("t")
+                if tipo == "bool":
+                    if val or k != "pratica.dichiarazioni":
+                        proponi(k, bool(val), nome)
+                elif val:
+                    proponi(k, "Sì", nome)
+
+    # 2) testi: valgono solo se la loro condizione è vera con le scelte appena lette
+    vista = _Sovrapposizione(pratica, prop)
+    for nome, r in regole.items():
+        if nome not in valori or "k" not in r or isinstance(valori[nome], bool) or valori[nome] is None:
+            continue
+        if "radio" in r or r.get("fmt"):
+            continue
+        if not _condizione_ok(vista, r.get("se")):
+            continue
+        testo = str(valori[nome]).strip()
+        if not testo:
+            continue
+        if "mappa" in r:
+            inv = {v: k for k, v in r["mappa"].items()}
+            testo = inv.get(testo, "")
+        elif r.get("combo") == "prefisso" and " - " in testo:
+            testo = testo.split(" - ")[0].strip()
+        if testo:
+            proponi(r["k"], testo, nome)
+    # direttore lavori: se coincide col progettista non serve copiarlo
+    dl = {k: v for k, v in prop.items() if k.startswith("dl.") and k not in ("dl.uguale", "dl.presenta")}
+    if dl:
+        uguali = all(str(vista.get("progettista." + k[3:]) or "").strip() == str(v).strip() for k, v in dl.items())
+        if uguali:
+            for k in dl:
+                prop.pop(k)
+        else:
+            prop["dl.uguale"] = False
+    return prop
+
+
+def differenze(pratica, proposte):
+    """[(chiave, valore attuale, valore nel PDF)] solo per i dati che cambiano."""
+    out = []
+    for k, v in proposte.items():
+        attuale = pratica.grezzo(k)
+        if isinstance(v, bool) or isinstance(attuale, bool):
+            if bool(v) != bool(attuale):
+                out.append((k, attuale, v))
+        elif str(v).strip() != str(attuale or "").strip():
+            out.append((k, attuale, v))
+    ordine = list(CAMPI.keys())
+    return sorted(out, key=lambda x: ordine.index(x[0]) if x[0] in ordine else 9999)
+
+
+def importa_modulo(pratica, modulo, pdf):
+    """Copia un modulo compilato fuori dal programma nella cartella Moduli della pratica."""
+    out = pratica.cartella / "Moduli" / f"{modulo.id}.pdf"
+    if Path(pdf).resolve() != out.resolve():
+        _archivia_precedente(pratica, modulo, out)
+        shutil.copy2(pdf, out)
+    pratica.registra_modulo(modulo.id, out, importato=True)
+    pratica.salva()
+    return out
+
+
+def moduli_modificati(pratica):
+    """Moduli della pratica il cui PDF è stato salvato fuori dal programma dopo l'ultima lettura."""
+    out = []
+    for mod_id, info in pratica.dati.get("_moduli", {}).items():
+        f = pratica.cartella / "Moduli" / info.get("file", f"{mod_id}.pdf")
+        try:
+            mt = f.stat().st_mtime
+        except OSError:
+            continue
+        if abs(mt - float(info.get("mtime", 0))) > 1:
+            out.append((mod_id, f))
+    return out
+
+
+def segna_letto(pratica, mod_id):
+    info = pratica.dati.get("_moduli", {}).get(mod_id)
+    if info:
+        f = pratica.cartella / "Moduli" / info.get("file", f"{mod_id}.pdf")
+        try:
+            info["mtime"] = f.stat().st_mtime
+        except OSError:
+            pass
 
 
 # --------------------------------------------------------------------------- analisi campi (per insegnare moduli)

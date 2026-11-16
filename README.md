@@ -22,7 +22,14 @@ secondo le regole di ogni comune. Non usa il browser né internet.
    nella pratica e genera il PDF in `Moduli/`. Il modulo successivo li trova già.
    Se correggi un dato, **Ricompila tutti** aggiorna i moduli già fatti (le versioni vecchie
    vanno in `Moduli/_precedenti`).
-5. **Consegna**: scegli i file, il programma li copia in `Consegne/<data>` con il testo del
+5. **Scrivere nei PDF**: con *Apri PDF* puoi compilare o correggere il modulo nel tuo lettore
+   (Acrobat, ecc.). Quando salvi, Fascicolo legge i dati nuovi e ti mostra cosa è cambiato:
+   scegli cosa salvare nella pratica e, se vuoi, aggiorna subito anche gli altri moduli.
+   Quando ricompili un modulo, le spunte e i campi che hai scritto a mano nel PDF restano.
+6. **Moduli già compilati**: con *Carica modulo compilato…* (o trascinandolo da *Documenti ›
+   Aggiungi file*) un PDF compilato fuori dal programma viene riconosciuto, messo in
+   `Moduli/` e i suoi dati vengono proposti per la pratica.
+7. **Consegna**: scegli i file, il programma li copia in `Consegne/<data>` con il testo del
    messaggio e, per PEC/PEO, apre una nuova mail già indirizzata. Firma digitalmente i PDF
    prima di allegarli.
 
