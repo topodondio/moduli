@@ -4,8 +4,8 @@ import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer, QDir, QUrl, QFileSystemWatcher, QEvent
-from PySide6.QtGui import QDesktopServices, QIcon
+from PySide6.QtCore import Qt, QSize, QTimer, QDir, QUrl, QFileSystemWatcher, QEvent
+from PySide6.QtGui import QDesktopServices, QIcon, QCursor
 from PySide6.QtWidgets import (QMainWindow, QToolButton, QDialog, QComboBox, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QListWidget,
                                QListWidgetItem, QPushButton, QTabWidget, QStackedWidget, QScrollArea, QFormLayout,
                                QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox,
@@ -283,15 +283,16 @@ class SchedaModuli(QWidget):
         n.setObjectName("nota")
         n.setWordWrap(True)
         lay.addWidget(n)
-        area = QScrollArea()
-        area.setWidgetResizable(True)
-        self.contenitore = QWidget()
-        self.contenitore.setObjectName("scheda")
-        self.righe = QVBoxLayout(self.contenitore)
-        self.righe.setContentsMargins(14, 10, 14, 10)
-        self.righe.setSpacing(6)
-        area.setWidget(self.contenitore)
-        lay.addWidget(area, 1)
+        self.elenco = QListWidget()
+        self.elenco.setObjectName("elencoModuli")
+        self.elenco.setDragDropMode(QAbstractItemView.InternalMove)
+        self.elenco.setDefaultDropAction(Qt.MoveAction)
+        self.elenco.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.elenco.setDropIndicatorShown(True)
+        self.elenco.setSpacing(2)
+        self.elenco.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.elenco.model().rowsMoved.connect(self._spostato)
+        lay.addWidget(self.elenco, 1)
         self.vuoto = QLabel("Nessun modulo in questa pratica. Premi «Compila un modulo» per iniziare.")
         self.vuoto.setObjectName("nota")
         self.vuoto.setAlignment(Qt.AlignCenter)
@@ -305,42 +306,29 @@ class SchedaModuli(QWidget):
 
     def carica(self, pratica):
         self.pratica = pratica
-        while self.righe.count():
-            it = self.righe.takeAt(0)
-            w = it.widget()
-            if w:
-                w.hide()
-                w.setParent(None)
-                w.deleteLater()
+        self.elenco.blockSignals(True)
+        self.elenco.clear()
         voci = self._ordinati()
         self.vuoto.setVisible(not voci)
+        mano = QCursor(Qt.OpenHandCursor)
         for pos, (mod_id, info) in enumerate(voci):
             riga = QWidget()
             h = QHBoxLayout(riga)
-            h.setContentsMargins(0, 2, 0, 2)
+            h.setContentsMargins(6, 4, 8, 4)
             h.setSpacing(8)
+            presa = QLabel("⠿")
+            presa.setObjectName("presa")
             num = QLabel(f"{pos + 1}")
             num.setObjectName("numero")
             num.setFixedWidth(30)
             num.setAlignment(Qt.AlignCenter)
-            h.addWidget(num)
-            su = QToolButton()
-            su.setText("▲")
-            su.setToolTip("Sposta su")
-            su.setEnabled(pos > 0)
-            su.clicked.connect(lambda _=0, k=mod_id: self.muovi(k, -1))
-            giu = QToolButton()
-            giu.setText("▼")
-            giu.setToolTip("Sposta giù")
-            giu.setEnabled(pos < len(voci) - 1)
-            giu.clicked.connect(lambda _=0, k=mod_id: self.muovi(k, +1))
-            h.addWidget(su)
-            h.addWidget(giu)
             t = QLabel(self._titolo(mod_id))
-            t.setFixedWidth(320)
+            t.setFixedWidth(330)
             t.setWordWrap(True)
-            t.setToolTip(f"Ultima modifica: {info.get('data', '')}")
-            h.addWidget(t)
+            for x in (presa, num, t):
+                x.setCursor(mano)
+                x.setToolTip("Tieni premuto e trascina per spostarlo")
+                h.addWidget(x)
             f = pratica.file_modulo(mod_id)
             casella = QLineEdit(str(f))
             casella.setReadOnly(True)
@@ -352,10 +340,21 @@ class SchedaModuli(QWidget):
             h.addWidget(casella, 1)
             h.addWidget(bottone("Scegli dove salvarlo…", lambda _=0, k=mod_id: self.sposta(k)))
             h.addWidget(bottone("Apri", lambda _=0, k=mod_id: self.apri(k), True))
-            self.righe.addWidget(riga)
-            riga.show()
-        self.righe.addStretch()
-        self.righe.activate()
+            it = QListWidgetItem()
+            it.setData(Qt.UserRole, mod_id)
+            it.setSizeHint(QSize(100, max(46, riga.sizeHint().height())))
+            self.elenco.addItem(it)
+            self.elenco.setItemWidget(it, riga)
+        self.elenco.blockSignals(False)
+
+    def _spostato(self, *_):
+        """Dopo un trascinamento: salvo il nuovo ordine e ridisegno (numeri aggiornati)."""
+        if not self.pratica:
+            return
+        ordine = [self.elenco.item(i).data(Qt.UserRole) for i in range(self.elenco.count())]
+        self.pratica.dati["_ordine_moduli"] = [k for k in ordine if k]
+        self.pratica.salva()
+        QTimer.singleShot(0, lambda: self.carica(self.pratica))
 
     def _ordinati(self):
         """Moduli della pratica nell'ordine scelto dall'utente (i nuovi vanno in fondo)."""
@@ -367,16 +366,6 @@ class SchedaModuli(QWidget):
             self.pratica.dati["_ordine_moduli"] = ordine + nuovi
             self.pratica.salva()
         return [(k, moduli[k]) for k in ordine + nuovi]
-
-    def muovi(self, mod_id, verso):
-        self._ordinati()
-        ordine = self.pratica.dati["_ordine_moduli"]
-        i = ordine.index(mod_id)
-        j = i + verso
-        if 0 <= j < len(ordine):
-            ordine[i], ordine[j] = ordine[j], ordine[i]
-            self.pratica.salva()
-            self.carica(self.pratica)
 
     # ------------------------------------------------------------------
     def nuovo(self):

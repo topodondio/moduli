@@ -19,7 +19,8 @@ Il programma ha tre schede.
 2. **Moduli**: premi **Compila un modulo**, scegli il modulo e si apre nel tuo programma PDF già
    compilato con i dati della pratica. Completalo e salvalo: Fascicolo legge i dati nuovi e li
    usa per gli altri moduli. I moduli della pratica sono in un elenco numerato che puoi
-   riordinare come vuoi con le frecce ▲▼. Ogni modulo ha la sua riga con la casella che indica
+   riordinare come vuoi tenendo premuto un modulo (sul numero o sul nome) e trascinandolo.
+   Ogni modulo ha la sua riga con la casella che indica
    dove è salvato, il pulsante **Scegli dove salvarlo…** (anche sul server) e **Apri**.
    Se nel frattempo hai cambiato i dati della pratica, all'apertura il modulo viene aggiornato
    (le parti scritte a mano nel PDF restano). Con **Carica un modulo già compilato…** porti
