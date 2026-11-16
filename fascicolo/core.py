@@ -155,16 +155,37 @@ class Pratica:
         return p
 
     def imposta_cartella_moduli(self, percorso):
+        v = self._relativo(percorso)
+        self.dati["_cartella_moduli"] = None if v == "Moduli" else v
+
+    def _assoluto(self, v):
+        p = Path(v)
+        return p if p.is_absolute() else self.cartella / p
+
+    def _relativo(self, percorso):
         p = Path(percorso)
         try:
-            v = str(p.resolve().relative_to(self.cartella.resolve()))
+            return str(p.resolve().relative_to(self.cartella.resolve()))
         except ValueError:
-            v = str(p.resolve())
-        self.dati["_cartella_moduli"] = None if v == "Moduli" else v
+            return str(p.resolve())
+
+    def cartella_propria(self, mod_id):
+        """Cartella scelta apposta per questo modulo, oppure None se usa quella predefinita."""
+        v = self.dati.get("_cartelle_moduli", {}).get(mod_id)
+        return self._assoluto(v) if v else None
+
+    def cartella_modulo(self, mod_id):
+        return self.cartella_propria(mod_id) or self.cartella_moduli
 
     def file_modulo(self, mod_id, nome=None):
         info = self.dati.get("_moduli", {}).get(mod_id, {})
-        return self.cartella_moduli / (nome or info.get("file") or f"{mod_id}.pdf")
+        return self.cartella_modulo(mod_id) / (nome or info.get("file") or f"{mod_id}.pdf")
+
+    def cartelle_in_uso(self):
+        out = {self.cartella_moduli}
+        for mod_id in self.dati.get("_moduli", {}):
+            out.add(self.cartella_modulo(mod_id))
+        return sorted(out)
 
     @property
     def nome(self):
@@ -431,7 +452,7 @@ def compila(pratica, modulo, uscita, conserva=None):
 
 def _archivia_precedente(pratica, modulo, out):
     if out.exists():  # tieni la versione precedente
-        old = pratica.cartella_moduli / "_precedenti"
+        old = out.parent / "_precedenti"
         old.mkdir(parents=True, exist_ok=True)
         shutil.copy2(out, old / f"{modulo.id}_{datetime.now():%Y%m%d-%H%M%S}.pdf")
 
@@ -439,7 +460,7 @@ def _archivia_precedente(pratica, modulo, out):
 def genera(pratica, modulo):
     """Compila il modulo. Se esiste già una versione compilata, i campi che il programma
     non gestisce (scelte tecniche, spunte fatte a mano nel PDF…) vengono conservati."""
-    out = pratica.cartella_moduli / f"{modulo.id}.pdf"
+    out = pratica.cartella_modulo(modulo.id) / f"{modulo.id}.pdf"
     conserva = None
     if out.exists():
         regole = modulo.map.get("campi", {})
@@ -644,7 +665,7 @@ def differenze(pratica, proposte):
 
 def importa_modulo(pratica, modulo, pdf):
     """Copia un modulo compilato fuori dal programma nella cartella Moduli della pratica."""
-    out = pratica.cartella_moduli / f"{modulo.id}.pdf"
+    out = pratica.cartella_modulo(modulo.id) / f"{modulo.id}.pdf"
     out.parent.mkdir(parents=True, exist_ok=True)
     if Path(pdf).resolve() != out.resolve():
         _archivia_precedente(pratica, modulo, out)
@@ -656,11 +677,11 @@ def importa_modulo(pratica, modulo, pdf):
 
 def importa_xfa(pratica, pdf):
     """Copia nella cartella Moduli un modulo dinamico del portale (XFA). Ritorna (chiave, percorso)."""
-    out = pratica.cartella_moduli / Path(pdf).name
+    out = pratica.cartella_modulo("xfa:" + Path(pdf).name) / Path(pdf).name
     out.parent.mkdir(parents=True, exist_ok=True)
     if Path(pdf).resolve() != out.resolve():
         if out.exists():
-            old = pratica.cartella_moduli / "_precedenti"
+            old = out.parent / "_precedenti"
             old.mkdir(parents=True, exist_ok=True)
             shutil.copy2(out, old / f"{out.stem}_{datetime.now():%Y%m%d-%H%M%S}.pdf")
         shutil.copy2(pdf, out)
@@ -680,6 +701,8 @@ def cambia_cartella_moduli(pratica, nuova, sposta=True):
     n = 0
     if sposta and vecchia.exists() and vecchia.resolve() != nuova.resolve():
         for mod_id, info in pratica.dati.get("_moduli", {}).items():
+            if pratica.cartella_propria(mod_id):
+                continue
             f = vecchia / info.get("file", f"{mod_id}.pdf")
             if f.exists():
                 dest = nuova / f.name
@@ -707,11 +730,33 @@ def cambia_cartella_moduli(pratica, nuova, sposta=True):
     return n
 
 
+def cambia_cartella_modulo(pratica, mod_id, nuova):
+    """Sceglie una cartella solo per questo modulo (None = torna a quella predefinita).
+    Se il modulo è già compilato, il PDF viene spostato. Ritorna il nuovo percorso del file."""
+    vecchio = pratica.file_modulo(mod_id)
+    cart = pratica.dati.setdefault("_cartelle_moduli", {})
+    if nuova is None:
+        cart.pop(mod_id, None)
+    else:
+        cart[mod_id] = pratica._relativo(nuova)
+    nuovo = pratica.file_modulo(mod_id)
+    if vecchio.exists() and vecchio.resolve() != nuovo.resolve():
+        nuovo.parent.mkdir(parents=True, exist_ok=True)
+        if nuovo.exists():
+            old = nuovo.parent / "_precedenti"
+            old.mkdir(exist_ok=True)
+            shutil.move(str(nuovo), str(old / f"{nuovo.stem}_{datetime.now():%Y%m%d-%H%M%S}.pdf"))
+        shutil.move(str(vecchio), str(nuovo))
+        segna_letto(pratica, mod_id)
+    pratica.salva()
+    return nuovo
+
+
 def moduli_modificati(pratica):
     """Moduli della pratica il cui PDF è stato salvato fuori dal programma dopo l'ultima lettura."""
     out = []
     for mod_id, info in pratica.dati.get("_moduli", {}).items():
-        f = pratica.cartella_moduli / info.get("file", f"{mod_id}.pdf")
+        f = pratica.file_modulo(mod_id)
         try:
             mt = f.stat().st_mtime
         except OSError:
@@ -724,7 +769,7 @@ def moduli_modificati(pratica):
 def segna_letto(pratica, mod_id):
     info = pratica.dati.get("_moduli", {}).get(mod_id)
     if info:
-        f = pratica.cartella_moduli / info.get("file", f"{mod_id}.pdf")
+        f = pratica.file_modulo(mod_id)
         try:
             info["mtime"] = f.stat().st_mtime
         except OSError:

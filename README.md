@@ -22,6 +22,10 @@ secondo le regole di ogni comune. Non usa il browser né internet.
    pratica, ma per ogni pratica puoi sceglierne un'altra (anche sul server, ad esempio
    nella cartella del progetto): alla creazione della pratica oppure da *Moduli › Cambia
    cartella…*, che sposta lì anche i moduli già compilati.
+   Ogni modulo può avere anche una **cartella propria**: seleziona uno o più moduli nella
+   tabella e premi *Cartella dei moduli selezionati…* (ad esempio il permesso di costruire in
+   `Server\Rossi\01 Permesso` e l'inizio lavori in `Server\Rossi\03 Cantiere`). La colonna
+   *Cartella* mostra dove va ogni modulo; "predefinita" vuol dire la cartella generale.
 5. **Moduli › Compila**: il programma chiede solo i dati che mancano a quel modulo, li salva
    nella pratica e genera il PDF in `Moduli/`. Il modulo successivo li trova già.
    Se correggi un dato, **Ricompila tutti** aggiorna i moduli già fatti (le versioni vecchie

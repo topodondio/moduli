@@ -230,27 +230,29 @@ class SchedaModuli(QWidget):
         n.setObjectName("nota")
         lay.addWidget(n)
         hc = QHBoxLayout()
-        hc.addWidget(QLabel("Cartella dei moduli:"))
+        hc.addWidget(QLabel("Cartella predefinita dei moduli:"))
         self.lbl_cartella = QLabel()
         self.lbl_cartella.setTextInteractionFlags(Qt.TextSelectableByMouse)
         f = self.lbl_cartella.font()
         f.setBold(True)
         self.lbl_cartella.setFont(f)
         hc.addWidget(self.lbl_cartella, 1)
-        hc.addWidget(bottone("Cambia cartella…", self.cambia_cartella,
-                             tip="Scegli dove salvare i moduli di questa pratica"))
+        hc.addWidget(bottone("Cambia…", self.cambia_cartella,
+                             tip="Cartella usata dai moduli che non hanno una cartella propria"))
+        hc.addWidget(bottone("Cartella dei moduli selezionati…", self.cartella_selezionati,
+                             tip="Salva i moduli selezionati in una cartella diversa (puoi selezionarne più di uno)"))
         hc.addWidget(bottone("Apri cartella moduli", lambda: self.pratica and core.apri_con_sistema(self._cartella())))
         lay.addLayout(hc)
-        self.tab = QTableWidget(0, 4)
-        self.tab.setHorizontalHeaderLabels(["Modulo", "Gruppo", "Stato dati", "Ultima compilazione"])
+        self.tab = QTableWidget(0, 5)
+        self.tab.setHorizontalHeaderLabels(["Modulo", "Gruppo", "Stato dati", "Ultima compilazione", "Cartella"])
         self.tab.verticalHeader().setVisible(False)
         self.tab.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.tab.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.tab.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.tab.setEditTriggers(QAbstractItemView.NoEditTriggers)
         hh = self.tab.horizontalHeader()
         hh.setSectionResizeMode(0, QHeaderView.Stretch)
-        for i, w in ((1, 140), (2, 140), (3, 150)):
-            hh.setSectionResizeMode(i, QHeaderView.Fixed)
+        for i, w in ((1, 140), (2, 120), (3, 140), (4, 220)):
+            hh.setSectionResizeMode(i, QHeaderView.Interactive)
             self.tab.setColumnWidth(i, w)
         self.tab.doubleClicked.connect(lambda *_: self.compila())
         lay.addWidget(self.tab)
@@ -319,6 +321,62 @@ class SchedaModuli(QWidget):
             self.tab.setItem(r, 2, st)
             info = fatti.get(m.id, {})
             self.tab.setItem(r, 3, QTableWidgetItem(info.get("data", "") + ("  (caricato)" if info.get("importato") else "")))
+            propria = pratica.cartella_propria(m.id)
+            it = QTableWidgetItem(self._breve(propria) if propria else "predefinita")
+            it.setToolTip(str(pratica.cartella_modulo(m.id)))
+            if not propria:
+                it.setForeground(Qt.gray)
+            self.tab.setItem(r, 4, it)
+
+    @staticmethod
+    def _breve(p):
+        parti = Path(p).parts
+        return str(Path(*parti[-2:])) if len(parti) > 2 else str(p)
+
+    def _selezionati(self):
+        righe = sorted({i.row() for i in self.tab.selectedIndexes()})
+        return [self.moduli[r] for r in righe if 0 <= r < len(self.moduli)]
+
+    def cartella_selezionati(self):
+        if not self.pratica:
+            return
+        sel = self._selezionati()
+        if not sel:
+            QMessageBox.information(self, "Cartella dei moduli", "Seleziona uno o più moduli nella tabella.")
+            return
+        nomi = "\n".join(f"• {m.titolo}" for m in sel[:12]) + ("\n…" if len(sel) > 12 else "")
+        scelta = QMessageBox(self)
+        scelta.setWindowTitle("Cartella dei moduli selezionati")
+        scelta.setText(f"Dove vuoi salvare questi moduli?\n\n{nomi}")
+        b_scegli = scelta.addButton("Scegli cartella…", QMessageBox.AcceptRole)
+        b_pred = scelta.addButton("Usa la cartella predefinita", QMessageBox.ActionRole)
+        scelta.addButton("Annulla", QMessageBox.RejectRole)
+        scelta.exec()
+        if scelta.clickedButton() is b_scegli:
+            partenza = self.pratica.cartella_modulo(sel[0].id)
+            d = QFileDialog.getExistingDirectory(self, "Cartella per i moduli selezionati",
+                                                 str(partenza if partenza.exists() else self.pratica.cartella))
+            if not d:
+                return
+            nuova = d
+        elif scelta.clickedButton() is b_pred:
+            nuova = None
+        else:
+            return
+        errori, spostati = [], 0
+        for m in sel:
+            try:
+                prima = self.pratica.file_modulo(m.id).exists()
+                core.cambia_cartella_modulo(self.pratica, m.id, nuova)
+                spostati += prima
+            except Exception as e:  # noqa – PDF aperto in un altro programma
+                errori.append(f"{m.titolo}: {e}")
+        if errori:
+            QMessageBox.warning(self, "Cartella dei moduli", "Alcuni moduli non sono stati spostati:\n\n" + "\n".join(errori))
+        self.f._sorveglia()
+        self.carica(self.pratica)
+        dove = nuova or "cartella predefinita"
+        self.f.stato(f"{len(sel)} moduli → {dove}" + (f" ({spostati} PDF spostati)" if spostati else ""))
 
     def _sel(self):
         r = self.tab.currentRow()
@@ -531,9 +589,22 @@ class SchedaConsegna(QWidget):
                 parti.append(f"<i>{com['note']}</i>")
             self.info.setText(" · ".join(parti))
         self.lista.clear()
+        visti = set()
+        for k in pratica.dati.get("_moduli", {}):
+            f = pratica.file_modulo(k)
+            if f.exists():
+                visti.add(f.resolve())
+                it = QListWidgetItem(f"Moduli/{f.name}")
+                it.setToolTip(str(f))
+                it.setData(Qt.UserRole, str(f))
+                it.setFlags(it.flags() | Qt.ItemIsUserCheckable)
+                it.setCheckState(Qt.Checked)
+                self.lista.addItem(it)
         for sotto in ("Moduli", "Elaborati", "Allegati"):
             d = pratica.cartella_moduli if sotto == "Moduli" else pratica.cartella / sotto
             for f in sorted(d.glob("*")) if d.exists() else []:
+                if f.resolve() in visti:
+                    continue
                 if f.is_file():
                     it = QListWidgetItem(f"{sotto}/{f.name}")
                     it.setData(Qt.UserRole, str(f))
@@ -702,12 +773,13 @@ class Finestra(QMainWindow):
             self.watcher.removePaths(vecchi)
         if not self.pratica:
             return
-        d = self.pratica.cartella_moduli
-        if d.exists():
-            self.watcher.addPath(str(d))
-            pdf = [str(f) for f in d.glob("*.pdf")]
-            if pdf:
-                self.watcher.addPaths(pdf)
+        for d in self.pratica.cartelle_in_uso():
+            if d.exists():
+                self.watcher.addPath(str(d))
+        pdf = [str(self.pratica.file_modulo(k)) for k in self.pratica.dati.get("_moduli", {})
+               if self.pratica.file_modulo(k).exists()]
+        if pdf:
+            self.watcher.addPaths(pdf)
 
     def changeEvent(self, e):
         if e.type() == QEvent.ActivationChange and self.isActiveWindow() and self.pratica:
