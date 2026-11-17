@@ -482,6 +482,28 @@ class Modulo:
         return self.map.get("edizione", "Altri moduli")
 
 
+def togli_modulo(pratica, mod_id):
+    """Toglie un modulo dalla pratica. Il PDF non si cancella: va nella sottocartella «_tolti»
+    accanto a dove era salvato. Solleva OSError se il file non si può spostare (es. aperto)."""
+    f = pratica.file_modulo(mod_id)
+    spostato = None
+    if f.exists():
+        cest = f.parent / "_tolti"
+        cest.mkdir(exist_ok=True)
+        dest = cest / f.name
+        n = 2
+        while dest.exists():
+            dest = cest / f"{f.stem} ({n}){f.suffix}"
+            n += 1
+        shutil.move(str(f), str(dest))
+        spostato = dest
+    pratica.dati.get("_moduli", {}).pop(mod_id, None)
+    pratica.dati.get("_cartelle_moduli", {}).pop(mod_id, None)
+    pratica.dati["_ordine_moduli"] = [k for k in pratica.dati.get("_ordine_moduli", []) if k != mod_id]
+    pratica.salva()
+    return spostato
+
+
 def separa_copia(mod_id):
     """'NOME__copia3' → ('NOME', 3); 'NOME' → ('NOME', 0)."""
     m = re.match(r"^(.*)__copia(\d+)$", mod_id or "")

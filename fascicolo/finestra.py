@@ -336,6 +336,8 @@ class SchedaModuli(QWidget):
         self.elenco.setSpacing(2)
         self.elenco.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.elenco.model().rowsMoved.connect(self._spostato)
+        self.elenco.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.elenco.customContextMenuRequested.connect(self._menu)
         lay.addWidget(self.elenco, 1)
         self.vuoto = QLabel("Nessun modulo in questa pratica. Premi «Compila un modulo» per iniziare.")
         self.vuoto.setObjectName("nota")
@@ -386,12 +388,49 @@ class SchedaModuli(QWidget):
             h.addWidget(casella, 1)
             h.addWidget(bottone("Scegli dove salvarlo…", lambda _=0, k=mod_id: self.sposta(k)))
             h.addWidget(bottone("Apri", lambda _=0, k=mod_id: self.apri(k), True))
+            via = QPushButton("Togli")
+            via.setObjectName("togli")
+            via.setCursor(QCursor(Qt.PointingHandCursor))
+            via.setToolTip("Togli questo modulo dalla pratica")
+            via.clicked.connect(lambda _=0, k=mod_id: self.togli(k))
+            h.addWidget(via)
             it = QListWidgetItem()
             it.setData(Qt.UserRole, mod_id)
             it.setSizeHint(QSize(100, max(46, riga.sizeHint().height())))
             self.elenco.addItem(it)
             self.elenco.setItemWidget(it, riga)
         self.elenco.blockSignals(False)
+
+    def _menu(self, pos):
+        it = self.elenco.itemAt(pos)
+        if not it or not it.data(Qt.UserRole):
+            return
+        k = it.data(Qt.UserRole)
+        from PySide6.QtWidgets import QMenu
+        m = QMenu(self)
+        m.addAction("Apri", lambda: self.apri(k))
+        m.addAction("Scegli dove salvarlo…", lambda: self.sposta(k))
+        m.addSeparator()
+        m.addAction("Togli dalla pratica…", lambda: self.togli(k))
+        m.exec(self.elenco.viewport().mapToGlobal(pos))
+
+    def togli(self, mod_id):
+        if not self.pratica:
+            return
+        if QMessageBox.question(self, "Togli modulo",
+                                f"Togliere «{self._titolo(mod_id)}» dalla pratica?\n\n"
+                                "Il PDF non viene cancellato: lo sposto nella cartella «_tolti» "
+                                "accanto a dove era salvato.") != QMessageBox.Yes:
+            return
+        try:
+            dest = core.togli_modulo(self.pratica, mod_id)
+        except OSError as e:
+            QMessageBox.warning(self, "Togli modulo", "Non riesco a spostare il PDF: forse è aperto in un "
+                                                      f"altro programma. Chiudilo e riprova.\n\n{e}")
+            return
+        self.f._sorveglia()
+        self.carica(self.pratica)
+        self.f.stato("Modulo tolto dalla pratica" + (f": il PDF è in {dest.parent}" if dest else ""))
 
     def _spostato(self, *_):
         """Dopo un trascinamento: salvo il nuovo ordine e ridisegno (numeri aggiornati)."""
