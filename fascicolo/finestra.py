@@ -493,6 +493,9 @@ class SchedaModuli(QWidget):
         info = self.pratica.dati.get("_moduli", {}).get(mod_id, {})
         da_fare = m is not None and (not f.exists() or
                                      float(self.pratica.dati.get("_ts_dati", 0)) > float(info.get("ts", 0)))
+        if m is not None and m.tipo == "xfa" and not da_fare:
+            from . import xfa
+            da_fare = xfa.da_ricostruire(m.pdf, f)  # moduli 2022 che Reader non lasciava salvare
         if da_fare:
             try:
                 f, _res = core.genera(self.pratica, m)

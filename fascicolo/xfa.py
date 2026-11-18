@@ -568,34 +568,55 @@ def _nodo(radice_dich, path):
     return e
 
 
+def ha_diritti(pdf):
+    """True se il PDF ha ancora la firma "funzioni estese di Reader" (UR3): senza, Acrobat Reader
+    non permette di salvare i moduli dinamici compilati."""
+    try:
+        doc = pymupdf.open(pdf)
+        try:
+            return doc.xref_get_key(doc.pdf_catalog(), "Perms")[0] != "null"
+        finally:
+            doc.close()
+    except Exception:
+        return False
+
+
+def da_ricostruire(modello, compilato):
+    """Il modulo compilato ha perso i diritti di salvataggio che il modello originale ha
+    (moduli fatti con Fascicolo 0.7.0–0.7.3): va rifatto dal modello conservando i dati."""
+    from pathlib import Path
+    return Path(compilato).exists() and ha_diritti(modello) and not ha_diritti(compilato)
+
+
 def scrivi(modello, uscita, pratica):
-    """Copia il modulo del portale e ci scrive dentro i dati della pratica (pacchetto 'datasets').
+    """Scrive i dati della pratica nel pacchetto 'datasets' del modulo del portale.
+    Se `uscita` esiste già scrive lì dentro (restano i campi compilati a mano), altrimenti parte
+    dal modello originale. Si salva in modo incrementale toccando solo i dati del modulo, come fa
+    Acrobat Reader: la firma che permette di salvarlo in Reader resta valida.
     Ritorna (campi scritti, campi possibili)."""
     import shutil
     from pathlib import Path
-    if Path(modello).resolve() != Path(uscita).resolve():
+    modello, uscita = Path(modello), Path(uscita)
+    vecchi = None
+    if uscita.exists() and modello.resolve() != uscita.resolve() and da_ricostruire(modello, uscita):
+        vecchi = leggi_datasets(uscita)  # dati già scritti (anche a mano) da riportare sul modello
+        shutil.copyfile(modello, uscita)
+    elif not uscita.exists():
         shutil.copyfile(modello, uscita)
     legati = campi_legati(uscita)
     valori = valori_da_scrivere(pratica, legati)
     doc = pymupdf.open(uscita)
     try:
         p = _pacchetti(doc)
-        xml = doc.xref_stream(p["datasets"])
         for pref, uri in (("xfa", NS_XFA), ("dd", NS_DD), ("", NS_SYG)):
             ET.register_namespace(pref, uri)
-        radice = ET.fromstring(xml)
+        radice = ET.fromstring(vecchi if vecchi else doc.xref_stream(p["datasets"]))
         dich = radice.find(".//" + NS + "dichiarazione")
         if dich is None:
             raise ValueError("struttura dati del modulo non riconosciuta")
         for path, val in valori.items():
             _nodo(dich, path).text = val
-        nuovo = ET.tostring(radice, encoding="utf-8")
-        doc.update_stream(p["datasets"], nuovo)
-        # la firma "funzioni estese di Reader" non vale più dopo la modifica: la tolgo,
-        # così Acrobat apre il modulo senza avvisi
-        cat = doc.pdf_catalog()
-        if doc.xref_get_key(cat, "Perms")[0] != "null":
-            doc.xref_set_key(cat, "Perms", "null")
+        doc.update_stream(p["datasets"], ET.tostring(radice, encoding="utf-8"))
         doc.saveIncr()
     finally:
         doc.close()

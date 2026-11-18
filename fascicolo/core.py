@@ -708,7 +708,8 @@ def genera(pratica, modulo):
     if modulo.tipo == "xfa":
         from . import xfa
         # se il modulo c'è già scrivo nel PDF esistente: restano i campi compilati a mano in Acrobat
-        res = xfa.scrivi(out if out.exists() else modulo.pdf, out, pratica)
+        # (se un file vecchio ha perso i diritti di salvataggio lo rifaccio dal modello con i suoi dati)
+        res = xfa.scrivi(modulo.pdf, out, pratica)
         pratica.registra_modulo(modulo.id, out)
         pratica.salva()
         return out, res
