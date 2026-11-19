@@ -496,7 +496,10 @@ class SchedaModuli(QWidget):
                                      float(self.pratica.dati.get("_ts_dati", 0)) > float(info.get("ts", 0)))
         if m is not None and m.tipo == "xfa" and not da_fare:
             from . import xfa
-            da_fare = xfa.da_ricostruire(m.pdf, f)  # moduli 2022 che Reader non lasciava salvare
+            from . import __version__
+            da_fare = (xfa.da_ricostruire(m.pdf, f)  # moduli 2022 che Reader non lasciava salvare
+                       # moduli 2022 compilati da una versione precedente: ora Fascicolo compila più campi
+                       or (not info.get("importato") and info.get("versione") != __version__))
         if da_fare:
             try:
                 f, _res = core.genera(self.pratica, m)

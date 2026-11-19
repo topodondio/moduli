@@ -54,7 +54,9 @@ def _t(e, path):
     if e is None:
         return ""
     x = e.find("/".join(NS + p for p in path.split("/")))
-    return (x.text or "").strip() if x is not None and x.text else ""
+    v = (x.text or "").strip() if x is not None and x.text else ""
+    m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", v)  # le date XFA sono AAAA-MM-GG
+    return f"{m.group(3)}/{m.group(2)}/{m.group(1)}" if m else v
 
 
 def _titolo_case(s):
@@ -272,8 +274,34 @@ def estrai(pdf):
                        (f"{chiave}.albo_n", _t(e, n["albo_n"])), (f"{chiave}.pec", _t(e, n["pec"]))):
             if val and k not in p:
                 p[k] = val
+    # inizio lavori 2022: sottoscrivente / legale rappresentante -> titolare
+    e_s = d.find("/".join(NS + q for q in "com_inizio_lavori/sottoscrivente".split("/")))
+    e_l = d.find("/".join(NS + q for q in "com_inizio_lavori/legale_rappresentante".split("/")))
+    pers = e_l if e_l is not None and _t(e_l, "Nome") else e_s
+    if pers is not None and _t(pers, "Nome") and "titolare.cognome" not in p:
+        if pers is e_l and _t(e_s, "Nome"):
+            p.setdefault("titolare.tipo", "Società")
+            for k, q in (("societa.denominazione", "Nome"), ("societa.cf", "Codicefiscale"),
+                         ("societa.piva", "PIVAsottoscritto"), ("societa.sede_comune", "Residenza/Comune"),
+                         ("societa.sede_civico", "Residenza/Ncivico"), ("societa.sede_cap", "Residenza/CAP")):
+                if _t(e_s, q):
+                    p.setdefault(k, _t(e_s, q))
+        _tit, cogn, nome = _separa_nome(_t(pers, "Nome"), "")
+        for k, val in (("titolare.cognome", cogn), ("titolare.nome", nome), ("titolare.cf", _t(pers, "Codicefiscale")),
+                       ("titolare.data_nascita", _t(pers, "Nascita/Data")),
+                       ("titolare.nascita_comune", _t(pers, "Nascita/Luogo")),
+                       ("titolare.res_comune", _t(pers, "Residenza/Comune")),
+                       ("titolare.res_civico", _t(pers, "Residenza/Ncivico")),
+                       ("titolare.res_cap", _t(pers, "Residenza/CAP")), ("titolare.tel", _t(pers, "Residenza/Telefono"))):
+            if val:
+                p.setdefault(k, val)
     if any(k.startswith("dl.") and k != "dl.uguale" for k in p):
-        p["dl.uguale"] = False
+        # il DL è «diverso dal progettista» solo se nel modulo ci sono entrambi e non coincidono
+        if p.get("progettista.cognome") and p.get("dl.cognome"):
+            p["dl.uguale"] = (p["progettista.cognome"].lower() == p["dl.cognome"].lower()
+                              and str(p.get("progettista.nome", "")).lower() == str(p.get("dl.nome", "")).lower())
+        else:
+            p.pop("dl.uguale", None)
 
     # contributo di costruzione (solo se il portale lo indica chiaramente) ---------------
     if _t(d, "attesta/contrib_costr_interventi_sogg_contrib") == "1":
@@ -300,6 +328,16 @@ def _pacchetti(doc):
     return {n: int(r) for n, r in re.findall(r"\((.*?)\)\s*(\d+) 0 R", xfa[1])}
 
 
+class Legati(set):
+    """Insieme dei percorsi collegati; .date = quelli che il modulo tratta come date (AAAA-MM-GG)."""
+    date = frozenset()
+
+
+def _data_iso(v):
+    m = re.fullmatch(r"\s*(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})\s*", str(v))
+    return f"{m.group(3)}-{int(m.group(2)):02d}-{int(m.group(1)):02d}" if m else v
+
+
 def campi_legati(pdf):
     """Percorsi (relativi a 'dichiarazione') dei campi che il modulo mostra davvero.
     Segue i collegamenti del modello XFA, anche quelli relativi al sottomodulo che li contiene."""
@@ -315,8 +353,9 @@ def campi_legati(pdf):
         radice = ET.fromstring(t)
     except ET.ParseError:
         testo = t.decode("utf-8", "replace")
-        return {r.replace(".", "/") for r in re.findall(r'ref="\$\.dichiarazione\.([^"\[]+)"', testo)}
-    out = set()
+        return Legati(r.replace(".", "/") for r in re.findall(r'ref="\$\.dichiarazione\.([^"\[]+)"', testo))
+    out = Legati()
+    date = set()
 
     def locale(e):
         return e.tag.rsplit("}", 1)[-1]
@@ -340,19 +379,24 @@ def campi_legati(pdf):
                 visita(c, ctx) if tipo in ("proto",) else None
                 continue
             nuovo = ctx
+            e_data = False
             for b in c:
                 if locale(b) == "bind" and b.get("match") == "dataRef" and b.get("ref"):
                     pp = percorso(ctx, b.get("ref"))
                     if pp is not None:
                         nuovo = pp
+                    e_data = any(locale(q) == "picture" and (q.text or "").startswith("date{") for q in b)
             if tipo in ("field",) or (tipo == "exclGroup" and nuovo is not ctx):
                 if nuovo is not ctx and nuovo and nuovo[0] == "dichiarazione":
                     out.add("/".join(nuovo[1:]))
+                    if e_data:
+                        date.add("/".join(nuovo[1:]))
                 if tipo == "field":
                     continue
             visita(c, nuovo)
 
     visita(radice, [])
+    out.date = frozenset(date)
     return out
 
 
@@ -543,6 +587,31 @@ def _specifici_scrivi(pratica, legati, metti):
     metti("mod_10_ccee/certifica_ubi_via", g("immobile.via"))
     metti("mod_10_ccee/certifica_ubi_civ", g("immobile.civico"))
     metti("mod_10_ccee/certifica_ubi_loc", g("immobile.comune"))
+    # inizio lavori 2022 (anche dentro PdC e ultimazione): sottoscrivente e legale rappresentante
+    S, L = "com_inizio_lavori/sottoscrivente", "com_inizio_lavori/legale_rappresentante"
+
+    def persona(base, piva_campo=None):
+        metti(f"{base}/Nome", _nome_completo(pratica, "titolare"))
+        metti(f"{base}/Codicefiscale", g("titolare.cf"))
+        metti(f"{base}/Nascita/Data", g("titolare.data_nascita"))
+        metti(f"{base}/Nascita/Luogo", g("titolare.nascita_comune"))
+        metti(f"{base}/Residenza/Comune", g("titolare.res_comune"))
+        metti(f"{base}/Residenza/Indirizzo", _via_completa(pratica, "titolare", "res"))
+        metti(f"{base}/Residenza/Ncivico", g("titolare.res_civico"))
+        metti(f"{base}/Residenza/CAP", g("titolare.res_cap"))
+        metti(f"{base}/Residenza/Telefono", g("titolare.tel"))
+    if g("titolare.tipo") == "Società":
+        metti(f"{S}/Nome", g("societa.denominazione"))
+        metti(f"{S}/Codicefiscale", g("societa.cf"))
+        metti(f"{S}/PIVAsottoscritto", g("societa.piva"))
+        metti(f"{S}/Residenza/Comune", g("societa.sede_comune"))
+        metti(f"{S}/Residenza/Indirizzo", _via_completa(pratica, "societa", "sede"))
+        metti(f"{S}/Residenza/Ncivico", g("societa.sede_civico"))
+        metti(f"{S}/Residenza/CAP", g("societa.sede_cap"))
+        metti(f"{S}/Residenza/Telefono", g("societa.tel"))
+        persona(L)
+    else:
+        persona(S)
     for base, chiave, nomi in TECNICI:
         n = nomi or _TEC_STD
         metti(f"{base}/{n['nome']}", _nome_completo(pratica, chiave, titolo=True))
@@ -615,7 +684,7 @@ def scrivi(modello, uscita, pratica):
         if dich is None:
             raise ValueError("struttura dati del modulo non riconosciuta")
         for path, val in valori.items():
-            _nodo(dich, path).text = val
+            _nodo(dich, path).text = _data_iso(val) if path in legati.date else val
         doc.update_stream(p["datasets"], ET.tostring(radice, encoding="utf-8"))
         doc.saveIncr()
     finally:

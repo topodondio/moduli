@@ -304,8 +304,9 @@ class Pratica:
         return out
 
     def registra_modulo(self, mod_id, file_out, importato=False):
+        from . import __version__
         info = {"file": str(Path(file_out).name), "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
-                "ts": time.time()}
+                "ts": time.time(), "versione": __version__}
         if importato:
             info["importato"] = True
         try:
@@ -925,7 +926,11 @@ def estrai_dati(pratica, modulo, valori):
 def differenze(pratica, proposte):
     """[(chiave, valore attuale, valore nel PDF)] solo per i dati che cambiano."""
     out = []
+    dl_uguale = pratica.grezzo("dl.uguale") and proposte.get("dl.uguale") is not False
     for k, v in proposte.items():
+        if dl_uguale and k.startswith("dl.") and k != "dl.uguale" and \
+                str(v).strip().lower() == str(pratica.get(k) or "").strip().lower():
+            continue  # è il progettista, che fa anche da direttore lavori: niente da cambiare
         attuale = pratica.grezzo(k)
         if isinstance(v, bool) or isinstance(attuale, bool):
             if bool(v) != bool(attuale):
