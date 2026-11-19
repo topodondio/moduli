@@ -487,7 +487,8 @@ def togli_modulo(pratica, mod_id):
     accanto a dove era salvato. Solleva OSError se il file non si può spostare (es. aperto)."""
     f = pratica.file_modulo(mod_id)
     spostato = None
-    if f.exists():
+    caricato = pratica.dati.get("_moduli", {}).get(mod_id, {}).get("importato")
+    if f.exists() and not caricato:  # un file caricato da te resta dov'è: tolgo solo il collegamento
         cest = f.parent / "_tolti"
         cest.mkdir(exist_ok=True)
         dest = cest / f.name
@@ -685,8 +686,8 @@ def compila(pratica, modulo, uscita, conserva=None):
 
 
 def _archivia_precedente(pratica, modulo, out):
-    if out.exists():  # tieni la versione precedente
-        old = out.parent / "_precedenti"
+    if out.exists():  # tieni la versione precedente, nella cartella della pratica (non tra i file dell'utente)
+        old = pratica.cartella_moduli / "_precedenti"
         old.mkdir(parents=True, exist_ok=True)
         shutil.copy2(out, old / f"{modulo.id}_{datetime.now():%Y%m%d-%H%M%S}.pdf")
 
@@ -935,31 +936,25 @@ def differenze(pratica, proposte):
     return sorted(out, key=lambda x: ordine.index(x[0]) if x[0] in ordine else 9999)
 
 
-def importa_modulo(pratica, modulo, pdf):
-    """Copia un modulo compilato fuori dal programma nella cartella Moduli della pratica."""
-    nome = f"{modulo.id_base} (copia {modulo.copia}).pdf" if modulo.copia else f"{modulo.id}.pdf"
-    out = pratica.file_modulo(modulo.id, None if pratica.dati.get("_moduli", {}).get(modulo.id) else nome)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    if Path(pdf).resolve() != out.resolve():
-        _archivia_precedente(pratica, modulo, out)
-        shutil.copy2(pdf, out)
-    pratica.registra_modulo(modulo.id, out, importato=True)
+def _collega(pratica, mod_id, pdf):
+    """Mette nella pratica il PDF così com'è, dove si trova: niente copie. La cartella del modulo
+    diventa quella del file, così «Apri» e i salvataggi lavorano sull'originale."""
+    pdf = Path(pdf)
+    pratica.dati.setdefault("_cartelle_moduli", {})[mod_id] = pratica._relativo(pdf.parent)
+    pratica.registra_modulo(mod_id, pdf, importato=True)
     pratica.salva()
-    return out
+    return pdf
+
+
+def importa_modulo(pratica, modulo, pdf):
+    """Collega alla pratica un modulo compilato fuori dal programma (il file resta l'originale)."""
+    return _collega(pratica, modulo.id, pdf)
 
 
 def importa_xfa(pratica, pdf):
-    """Copia nella cartella Moduli un modulo dinamico del portale (XFA). Ritorna (chiave, percorso)."""
-    out = pratica.cartella_modulo("xfa:" + Path(pdf).name) / Path(pdf).name
-    out.parent.mkdir(parents=True, exist_ok=True)
-    if Path(pdf).resolve() != out.resolve():
-        if out.exists():
-            old = out.parent / "_precedenti"
-            old.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(out, old / f"{out.stem}_{datetime.now():%Y%m%d-%H%M%S}.pdf")
-        shutil.copy2(pdf, out)
-    chiave = "xfa:" + out.name
-    pratica.registra_modulo(chiave, out, importato=True)
+    """Collega alla pratica un modulo dinamico del portale (XFA) non riconosciuto. Ritorna (chiave, percorso)."""
+    chiave = "xfa:" + Path(pdf).name
+    out = _collega(pratica, chiave, pdf)
     pratica.dati["_moduli"][chiave]["xfa"] = True
     pratica.salva()
     return chiave, out

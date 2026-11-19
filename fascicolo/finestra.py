@@ -417,10 +417,11 @@ class SchedaModuli(QWidget):
     def togli(self, mod_id):
         if not self.pratica:
             return
+        caricato = self.pratica.dati.get("_moduli", {}).get(mod_id, {}).get("importato")
+        nota = ("Il PDF l'hai caricato tu: resta dov'è, tolgo solo il collegamento dalla pratica." if caricato else
+                "Il PDF non viene cancellato: lo sposto nella cartella «_tolti» accanto a dove era salvato.")
         if QMessageBox.question(self, "Togli modulo",
-                                f"Togliere «{self._titolo(mod_id)}» dalla pratica?\n\n"
-                                "Il PDF non viene cancellato: lo sposto nella cartella «_tolti» "
-                                "accanto a dove era salvato.") != QMessageBox.Yes:
+                                f"Togliere «{self._titolo(mod_id)}» dalla pratica?\n\n{nota}") != QMessageBox.Yes:
             return
         try:
             dest = core.togli_modulo(self.pratica, mod_id)
@@ -944,6 +945,12 @@ class Finestra(QMainWindow):
         d = AggiornaDati(self.pratica, diff, titolo, intro, len(altri), self)
         if not d.exec() or not d.applicati:
             return False
+        if escludi in fatti:
+            # il PDF da cui arrivano i dati è già aggiornato: non va riscritto (resta l'originale)
+            import time as _t
+            fatti[escludi]["ts"] = _t.time()
+            core.segna_letto(self.pratica, escludi)
+            self.pratica.salva()
         self.scheda_dati.carica(self.pratica)
         self.aggiorna_intestazione()
         if d.ricompila_altri():
@@ -960,11 +967,11 @@ class Finestra(QMainWindow):
         self.stato(f"Salvati {d.applicati} dati da «{titolo}»")
         return True
 
-    def _rivedi_xfa(self, pdf, intro):
+    def _rivedi_xfa(self, pdf, intro, escludi=None):
         titolo, prop = xfa.estrai(pdf)
         if titolo is None:
             return False
-        return self._rivedi_proposte(f"{titolo} ({Path(pdf).name})", prop, intro)
+        return self._rivedi_proposte(f"{titolo} ({Path(pdf).name})", prop, intro, escludi=escludi)
 
     def controlla_pdf_modificati(self):
         if not self.pratica or self._in_controllo:
@@ -976,12 +983,14 @@ class Finestra(QMainWindow):
                 self.pratica.salva()
                 if mod_id.startswith("xfa:"):
                     self._rivedi_xfa(f, f"Hai modificato e salvato <b>{f.name}</b> (modulo del portale). "
-                                        "Questi dati sono diversi da quelli della pratica: scegli quali salvare.")
+                                        "Questi dati sono diversi da quelli della pratica: scegli quali salvare.",
+                                     escludi=mod_id)
                     continue
                 m = self._modulo_per_id(mod_id)
                 if m and m.tipo == "xfa":
                     self._rivedi_xfa(f, f"Hai modificato e salvato <b>{m.titolo}</b> (moduli 2022). "
-                                        "Questi dati sono diversi da quelli della pratica: scegli quali salvare.")
+                                        "Questi dati sono diversi da quelli della pratica: scegli quali salvare.",
+                                     escludi=mod_id)
                     continue
                 if m and m.tipo == "statico":
                     continue
@@ -1006,6 +1015,9 @@ class Finestra(QMainWindow):
         if not m and n_campi == 0 and xfa.leggi_datasets(pdf):
             m22 = core.riconosci_xfa(pdf, moduli)
             if m22:
+                m22 = self._gia_presente(m22, pdf)
+                if m22 is None:
+                    return
                 self._in_controllo = True
                 try:
                     out = core.importa_modulo(self.pratica, m22, pdf)
@@ -1013,18 +1025,19 @@ class Finestra(QMainWindow):
                     self._in_controllo = False
                 self._sorveglia()
                 self._rivedi_xfa(out, f"Ho caricato <b>{m22.titolo}</b> (moduli 2022) nella pratica. Questi sono i "
-                                      "dati trovati nel PDF che mancano o sono diversi nella pratica: scegli quali salvare.")
+                                      "dati trovati nel PDF che mancano o sono diversi nella pratica: scegli quali salvare.",
+                                 escludi=m22.id)
                 self.stato(f"«{pdf.name}» caricato come «{m22.titolo}» (2022)")
                 return
             titolo, _p = xfa.estrai(pdf)
             self._in_controllo = True
             try:
-                _chiave, out = core.importa_xfa(self.pratica, pdf)
+                chiave, out = core.importa_xfa(self.pratica, pdf)
             finally:
                 self._in_controllo = False
             self._sorveglia()
-            self._rivedi_xfa(out, f"<b>{pdf.name}</b> è un modulo dinamico del portale "
-                                  f"(<i>{titolo}</i>): l'ho messo nella cartella Moduli della pratica. "
+            self._rivedi_xfa(out, escludi=chiave, intro= f"<b>{pdf.name}</b> è un modulo dinamico del portale "
+                                  f"(<i>{titolo}</i>): l'ho aggiunto alla pratica lasciandolo dov'è. "
                                   "Questi sono i dati che ho letto: scegli quali salvare. "
                                   "Il file resta modificabile solo con Adobe Acrobat/Reader; "
                                   "se lo correggi e lo salvi, rileggo i dati.")
@@ -1056,6 +1069,9 @@ class Finestra(QMainWindow):
                 self.stato(f"«{pdf.name}» copiato negli Allegati")
                 return
             m = cand[voci.index(scelta)]
+        m = self._gia_presente(m, pdf)
+        if m is None:
+            return
         self._in_controllo = True
         try:
             out = core.importa_modulo(self.pratica, m, pdf)
@@ -1066,6 +1082,33 @@ class Finestra(QMainWindow):
             self._rivedi_dati(m, out, f"Ho caricato <b>{m.titolo}</b> nella pratica. Questi sono i dati trovati "
                                       "nel PDF che mancano o sono diversi nella pratica: scegli quali salvare.")
         self.stato(f"«{pdf.name}» caricato come «{m.titolo}»")
+
+    def _gia_presente(self, m, pdf):
+        """Se il modulo è già nella pratica con un altro file, chiede se sostituirlo o aggiungerlo.
+        Ritorna il modulo da usare (eventualmente come altra copia) oppure None se annullato."""
+        info = self.pratica.dati.get("_moduli", {}).get(m.id)
+        if not info:
+            return m
+        attuale = self.pratica.file_modulo(m.id)
+        try:
+            if attuale.resolve() == pdf.resolve():
+                return m
+        except OSError:
+            pass
+        r = QMessageBox(self)
+        r.setWindowTitle("Modulo già nella pratica")
+        r.setIcon(QMessageBox.Question)
+        r.setText(f"<b>{m.titolo}</b> è già nella pratica:<br><i>{attuale}</i><br><br>"
+                  f"Il file che stai caricando è:<br><i>{pdf}</i>")
+        b_sost = r.addButton("Usa questo al posto di quello", QMessageBox.AcceptRole)
+        b_agg = r.addButton("Aggiungilo come altro modulo", QMessageBox.ActionRole)
+        r.addButton("Annulla", QMessageBox.RejectRole)
+        r.exec()
+        if r.clickedButton() is b_sost:
+            return m  # il file precedente resta dov'è, semplicemente non è più nella pratica
+        if r.clickedButton() is b_agg:
+            return m.come_copia(core.prossima_copia(self.pratica, m))
+        return None
 
     # ------------------------------------------------------------------
     def stato(self, msg):
