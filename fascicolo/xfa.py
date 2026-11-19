@@ -406,6 +406,8 @@ def _nome_completo(pratica, sez, titolo=False):
 
 
 def _via_completa(pratica, sez, pref):
+    if not str(pratica.get(f"{sez}.{pref}_via") or "").strip():
+        return ""  # solo «Via» senza nome non serve
     return " ".join(str(x).strip() for x in (pratica.get(f"{sez}.{pref}_dug"), pratica.get(f"{sez}.{pref}_via"))
                     if str(x or "").strip())
 
