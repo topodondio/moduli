@@ -46,8 +46,9 @@ Il programma ha tre schede.
    compilato con i dati della pratica. Completalo e salvalo: Fascicolo legge i dati nuovi e li
    usa per gli altri moduli. I moduli della pratica sono in un elenco numerato che puoi
    riordinare come vuoi tenendo premuto un modulo (sul numero o sul nome) e trascinandolo.
-   Ogni modulo ha la sua riga con la casella che indica
-   dove è salvato, il pulsante **Scegli dove salvarlo…** (anche sul server) e **Apri**.
+   Quando compili un modulo nuovo Fascicolo chiede dove salvarlo (cartella e nome, anche sul
+   server): da lì in poi il riferimento è quel file. Ogni riga mostra dove è salvato, con
+   **Apri** e **Togli**; col tasto destro puoi aprire la cartella o spostarlo.
    Se nel frattempo hai cambiato i dati della pratica, all'apertura il modulo viene aggiornato
    (le parti scritte a mano nel PDF restano). Con **Carica un modulo già compilato…** porti
    nella pratica un PDF fatto fuori dal programma, anche i vecchi moduli dinamici del portale.

@@ -74,6 +74,8 @@ QLabel#etichetta {{ color: #4a5653; }}
 class Campo(QWidget):
     """Widget generico per un campo dello schema: espone valore()/imposta() e il segnale cambiato.QPushButton#togli { color: #6b7075; }
 QPushButton#togli:hover { color: #b3261e; border-color: #b3261e; background: #fbeeed; }
+QLabel#percorso { color: #6b7075; font-size: 9pt; }
+QLabel#percorso[mancante="true"] { color: #b3261e; }
 """
     cambiato = Signal()
 

@@ -1,5 +1,6 @@
 """Finestra principale di Fascicolo."""
 import os
+import re
 import shutil
 import urllib.parse
 from datetime import datetime
@@ -307,6 +308,21 @@ class SceltaModulo(QDialog):
         return it.data(0, Qt.UserRole) if it else None
 
 
+class Percorso(QLabel):
+    """Percorso del file su una riga, accorciato in mezzo se non ci sta."""
+
+    def __init__(self, testo):
+        super().__init__()
+        self._testo = testo
+        self.setMinimumWidth(80)
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        self.setText(testo)
+
+    def resizeEvent(self, e):
+        self.setText(self.fontMetrics().elidedText(self._testo, Qt.ElideMiddle, max(20, self.width())))
+        super().resizeEvent(e)
+
+
 class SchedaModuli(QWidget):
     """I moduli di questa pratica: uno per riga, con dove è salvato e i pulsanti per aprirlo o spostarlo."""
 
@@ -322,7 +338,7 @@ class SchedaModuli(QWidget):
         h.addWidget(bottone("Carica un modulo già compilato…", self.carica_compilato))
         h.addStretch()
         lay.addLayout(h)
-        n = QLabel("Il modulo si apre nel tuo programma PDF già compilato con i dati della pratica: completalo e salvalo. "
+        n = QLabel("Scegli dove salvare il modulo: si apre già compilato con i dati della pratica, completalo e salvalo. "
                    "Fascicolo legge i dati nuovi e li usa per gli altri moduli.")
         n.setObjectName("nota")
         n.setWordWrap(True)
@@ -378,15 +394,12 @@ class SchedaModuli(QWidget):
                 x.setToolTip("Tieni premuto e trascina per spostarlo")
                 h.addWidget(x)
             f = pratica.file_modulo(mod_id)
-            casella = QLineEdit(str(f))
-            casella.setReadOnly(True)
-            casella.setCursorPosition(0)
-            casella.setToolTip(str(f))
+            casella = Percorso(str(f) if f.exists() else "File non trovato: " + str(f))
+            casella.setObjectName("percorso")
             if not f.exists():
                 casella.setProperty("mancante", "true")
-                casella.setToolTip("File non trovato: " + str(f))
+            casella.setToolTip(str(f) + "\n(tasto destro per aprire la cartella)")
             h.addWidget(casella, 1)
-            h.addWidget(bottone("Scegli dove salvarlo…", lambda _=0, k=mod_id: self.sposta(k)))
             h.addWidget(bottone("Apri", lambda _=0, k=mod_id: self.apri(k), True))
             via = QPushButton("Togli")
             via.setObjectName("togli")
@@ -409,7 +422,8 @@ class SchedaModuli(QWidget):
         from PySide6.QtWidgets import QMenu
         m = QMenu(self)
         m.addAction("Apri", lambda: self.apri(k))
-        m.addAction("Scegli dove salvarlo…", lambda: self.sposta(k))
+        m.addAction("Apri la cartella", lambda: core.apri_con_sistema(self.pratica.file_modulo(k).parent))
+        m.addAction("Sposta in un'altra cartella…", lambda: self.sposta(k))
         m.addSeparator()
         m.addAction("Togli dalla pratica…", lambda: self.togli(k))
         m.exec(self.elenco.viewport().mapToGlobal(pos))
@@ -478,9 +492,35 @@ class SchedaModuli(QWidget):
             r.exec()
             if r.clickedButton() is b_copia:
                 scelto = m.come_copia(core.prossima_copia(self.pratica, m)).id
-            elif r.clickedButton() is not b_apri:
+            elif r.clickedButton() is b_apri:
+                self.apri(scelto)
                 return
-        self.apri(scelto)
+            else:
+                return
+        self.crea(scelto)
+
+    def crea(self, mod_id):
+        """Modulo nuovo: chiedo dove salvarlo (cartella e nome, come un normale «Salva con nome»),
+        lo compilo lì e lo apro. Da quel momento il riferimento è quel file."""
+        m = self.f._modulo_per_id(mod_id)
+        if m is None:
+            return
+        cart = Path(self.pratica.dati.get("_ultima_cartella") or self.pratica.cartella_moduli)
+        if not cart.exists():
+            cart = self.pratica.cartella if self.pratica.cartella.exists() else Path.home()
+        nome = re.sub(r'[\\/:*?"<>|]+', " ", f"{m.titolo} - {self.pratica.nome}").strip() + ".pdf"
+        dest, _ = QFileDialog.getSaveFileName(self, f"Salva «{m.titolo}»", str(cart / nome), "PDF (*.pdf)")
+        if not dest:
+            return
+        try:
+            f, _res = core.genera(self.pratica, m, destinazione=dest)
+        except Exception as e:  # noqa
+            QMessageBox.critical(self, "Compila", f"Non riesco a creare il modulo:\n{e}")
+            return
+        self.f._sorveglia()
+        self.carica(self.pratica)
+        core.apri_con_sistema(f)
+        self.f.stato(f"Salvato in {f.parent}: quando lo modifichi e lo salvi, leggo i dati nuovi")
 
     def apri(self, mod_id):
         """Apre il modulo nel programma PDF; se non c'è ancora, o se i dati della pratica sono cambiati,

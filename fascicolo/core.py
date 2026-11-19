@@ -717,11 +717,25 @@ def _archivia_precedente(pratica, modulo, out):
         shutil.copy2(out, old / f"{modulo.id}_{datetime.now():%Y%m%d-%H%M%S}.pdf")
 
 
-def genera(pratica, modulo):
+def genera(pratica, modulo, destinazione=None):
     """Compila il modulo. Se esiste già una versione compilata, i campi che il programma
-    non gestisce (scelte tecniche, spunte fatte a mano nel PDF…) vengono conservati."""
-    nome = f"{modulo.id_base} (copia {modulo.copia}).pdf" if modulo.copia else f"{modulo.id}.pdf"
-    out = pratica.file_modulo(modulo.id, None if pratica.dati.get("_moduli", {}).get(modulo.id) else nome)
+    non gestisce (scelte tecniche, spunte fatte a mano nel PDF…) vengono conservati.
+    `destinazione`: file scelto dall'utente per un modulo nuovo (cartella e nome)."""
+    if destinazione:
+        out = Path(destinazione)
+        if out.suffix.lower() != ".pdf":
+            out = out.with_name(out.name + ".pdf")
+        if in_uso(out):
+            raise FileAperto(f"«{out.name}» è aperto in un altro programma (Acrobat?): chiudilo e riprova")
+        if out.exists():  # l'utente ha scelto di sostituirlo: tengo la copia e riparto dal modulo vuoto
+            _archivia_precedente(pratica, modulo, out)
+            out.unlink()
+        pratica.dati.setdefault("_cartelle_moduli", {})[modulo.id] = pratica._relativo(out.parent)
+        pratica.dati.get("_moduli", {}).pop(modulo.id, None)
+        pratica.dati["_ultima_cartella"] = str(out.parent)
+    else:
+        nome = f"{modulo.id_base} (copia {modulo.copia}).pdf" if modulo.copia else f"{modulo.id}.pdf"
+        out = pratica.file_modulo(modulo.id, None if pratica.dati.get("_moduli", {}).get(modulo.id) else nome)
     out.parent.mkdir(parents=True, exist_ok=True)
     if in_uso(out):
         raise FileAperto(f"«{out.name}» è aperto in un altro programma (Acrobat?): chiudilo e riprova")
