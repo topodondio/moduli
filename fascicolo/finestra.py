@@ -500,6 +500,11 @@ class SchedaModuli(QWidget):
             da_fare = (xfa.da_ricostruire(m.pdf, f)  # moduli 2022 che Reader non lasciava salvare
                        # moduli 2022 compilati da una versione precedente: ora Fascicolo compila più campi
                        or (not info.get("importato") and info.get("versione") != __version__))
+        if da_fare and core.in_uso(f):
+            # è già aperto in Acrobat: non lo tocco (altrimenti Acrobat non riesce più a salvarlo)
+            self.f.stato(f"«{f.name}» è già aperto: lo aggiorno quando lo chiudi")
+            core.apri_con_sistema(f)
+            return
         if da_fare:
             try:
                 f, _res = core.genera(self.pratica, m)
@@ -959,6 +964,9 @@ class Finestra(QMainWindow):
         if d.ricompila_altri():
             errori = []
             for m in altri:
+                if core.in_uso(self.pratica.file_modulo(m.id)):
+                    errori.append(f"{m.titolo}: è aperto in Acrobat, chiudilo e premi «Apri» per aggiornarlo")
+                    continue
                 try:
                     core.genera(self.pratica, m)
                 except Exception as e:  # noqa – ad esempio il PDF è aperto in Acrobat

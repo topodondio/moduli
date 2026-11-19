@@ -686,6 +686,30 @@ def compila(pratica, modulo, uscita, conserva=None):
     return n, len(regole)
 
 
+def in_uso(percorso):
+    """True se il file è aperto in un altro programma (Windows: lo provo ad aprire in esclusiva).
+    Fascicolo non deve mai scrivere in un PDF aperto in Acrobat: dopo, Acrobat non riesce più a salvarlo."""
+    p = Path(percorso)
+    if not p.exists() or not sys.platform.startswith("win"):
+        return False
+    import ctypes
+    from ctypes import wintypes
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.CreateFileW.restype = wintypes.HANDLE
+    k32.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID,
+                                wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    GENERIC_READ, OPEN_EXISTING, ATTR_NORMAL = 0x80000000, 3, 0x80
+    h = k32.CreateFileW(str(p), GENERIC_READ, 0, None, OPEN_EXISTING, ATTR_NORMAL, None)
+    if h in (None, wintypes.HANDLE(-1).value):
+        return ctypes.get_last_error() in (32, 33)  # violazione di condivisione / blocco
+    k32.CloseHandle(h)
+    return False
+
+
+class FileAperto(OSError):
+    pass
+
+
 def _archivia_precedente(pratica, modulo, out):
     if out.exists():  # tieni la versione precedente, nella cartella della pratica (non tra i file dell'utente)
         old = pratica.cartella_moduli / "_precedenti"
@@ -699,6 +723,8 @@ def genera(pratica, modulo):
     nome = f"{modulo.id_base} (copia {modulo.copia}).pdf" if modulo.copia else f"{modulo.id}.pdf"
     out = pratica.file_modulo(modulo.id, None if pratica.dati.get("_moduli", {}).get(modulo.id) else nome)
     out.parent.mkdir(parents=True, exist_ok=True)
+    if in_uso(out):
+        raise FileAperto(f"«{out.name}» è aperto in un altro programma (Acrobat?): chiudilo e riprova")
     conserva = None
     if out.exists() and modulo.tipo == "acroform":
         regole = modulo.map.get("campi", {})
