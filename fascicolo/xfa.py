@@ -262,7 +262,9 @@ def estrai(pdf):
 
     # campi dei singoli moduli 2022 ----------------------------------------------------------
     for path, k in SPECIFICI:
-        metti(k, _t(d, path), k in ("immobile.destinazione",) and False)
+        if k.startswith("comune.") or k in p:
+            continue  # i dati del comune vengono dall'elenco Comuni; non sovrascrivo quanto già letto
+        metti(k, _t(d, path))
     for base, chiave, nomi in TECNICI:
         n = nomi or _TEC_STD
         e = d.find("/".join(NS + x for x in base.split("/")))
@@ -441,6 +443,7 @@ def valori_da_scrivere(pratica, legati):
     metti(f"{r}/residenza/provincia", g("titolare.res_prov"))
     metti(f"{r}/residenza/cap", g("titolare.res_cap"))
     metti(f"{r}/contatti/email", g("titolare.email"))
+    metti(f"{r}/dati_nascita/comune", g("titolare.nascita_comune"))
     metti(f"{r}/contatti/telefono", g("titolare.tel"))
     if g("titolare.tipo") == "Società":
         metti("titolare/in_qualita_di", g("titolare.carica"))
@@ -453,6 +456,8 @@ def valori_da_scrivere(pratica, legati):
         metti("titolare/contatti/telefono", g("societa.tel"))
     else:
         metti("titolare/in_qualita_di", g("titolare.qualita"))
+        metti("titolare/contatti/telefono", g("titolare.tel"))
+        metti("titolare/contatti/email", g("titolare.email"))
     if g("titolarita.tipo") != "Proprietario esclusivo":
         metti("titolare/titolare_altro_diritto", g("titolarita.desc"))
     # tecnici
@@ -490,6 +495,7 @@ def valori_da_scrivere(pratica, legati):
     # impresa
     metti("impresa_esecutrice/ragione_sociale", g("impresa.denominazione"))
     metti("impresa_esecutrice/codice_fiscale", g("impresa.cf_piva"))
+    metti("impresa_esecutrice/referente/nome", " ".join(str(z) for z in (g("impresa.lr_cognome"), g("impresa.lr_nome")) if z))
     # immobile
     u = "intervento/localizzazione/ubicazione"
     metti(f"{u}/indirizzo", g("immobile.via"))
@@ -539,9 +545,37 @@ SPECIFICI = [
     ("elenco_titoli_edilizi/num_dia", "lavori.titolo_n"),
     ("elenco_titoli_edilizi/data_dia", "lavori.titolo_data"),
     ("mod_10_ccee/certifica_uso", "immobile.destinazione"),
+    ("mod_10_ccee/elenco_titoli_edilizi/titolo_abilitativo", "lavori.titolo_tipo"),
+    ("mod_10_ccee/elenco_titoli_edilizi/num_dia", "lavori.titolo_n"),
+    ("mod_10_ccee/elenco_titoli_edilizi/data_dia", "lavori.titolo_data"),
+    ("dich_ultimazione_lavori/titolare_atti/titolo_abilitativo", "lavori.titolo_tipo"),
+    ("dich_ultimazione_lavori/titolare_atti/num_dia", "lavori.titolo_n"),
+    ("dich_ultimazione_lavori/titolare_atti/data_dia", "lavori.titolo_data"),
+    ("com_inizio_lavori/imprese_lav_auton/PIVA", "impresa.cf_piva"),
+    ("dichiarazioni_progettista/PRG_vigente/zona", "immobile.zona_prg"),
+    ("dichiarazioni_progettista/PRG_vigente/dichiarazione/zona", "immobile.zona_prg"),
+    ("dichiarazioni_progettista/PRG_adottato/zona", "immobile.zona_prg_adottato"),
+    ("dichiarazioni_progettista/PRG_adottato/dichiarazione/zona", "immobile.zona_prg_adottato"),
+    # impresa esecutrice: recapiti e sedi (moduli titolo edilizio, soggetti coinvolti, ultimazione)
+    ("impresa_esecutrice/partita_iva", "impresa.cf_piva"),
+    ("impresa_esecutrice/contatti/telefono", "impresa.tel"),
+    ("impresa_esecutrice/contatti/fax", "impresa.fax"),
+    ("impresa_esecutrice/contatti/emailPEC", "impresa.pec"),
+    ("impresa_esecutrice/sede_legale/indirizzo", "impresa.sede_via"),
+    ("impresa_esecutrice/sede_legale/numero_civico", "impresa.sede_civico"),
+    ("impresa_esecutrice/sede_legale/comune", "impresa.sede_comune"),
+    ("impresa_esecutrice/sede_legale/provincia", "impresa.sede_prov"),
+    ("impresa_esecutrice/sede_legale/cap", "impresa.sede_cap"),
+    ("impresa_esecutrice/sede_operativa/indirizzo", "impresa.sede_via"),
+    ("impresa_esecutrice/sede_operativa/numero_civico", "impresa.sede_civico"),
+    ("impresa_esecutrice/sede_operativa/comune", "impresa.sede_comune"),
+    ("impresa_esecutrice/sede_operativa/provincia", "impresa.sede_prov"),
+    ("impresa_esecutrice/sede_operativa/cap", "impresa.sede_cap"),
+    ("anagrafica_comune/contatti/emailPEC", "comune.pec"),
 ]
 # blocchi "immobile" ripetuti dentro i singoli moduli
-UBICAZIONI = ["com_inizio_lavori/intervento", "mod_scagi/elenco_realta_immobiliari"]
+UBICAZIONI = ["com_inizio_lavori/intervento", "mod_scagi/elenco_realta_immobiliari", "dich_ultimazione_lavori/intervento",
+              "dom_permcostr_e_provv_sanatoria/intervento", "intervento_paesaggistica/richieste/intervento_su_immobili"]
 # tecnici dentro i singoli moduli: (percorso, chiave, nomi dei sotto-campi)
 TECNICI = [
     ("com_inizio_lavori/comunica/direttore_lavori", "dl",
@@ -567,6 +601,7 @@ def _specifici_scrivi(pratica, legati, metti):
     ped = next((x for x in righe if x["ped"]), None)
     pf = next((x for x in righe if x["pf"]), None)
     for base in UBICAZIONI:
+        metti(f"{base}/Descrizione_gen_intervento", g("pratica.oggetto"))
         metti(f"{base}/ubicazione/Comune", g("immobile.comune"))
         metti(f"{base}/ubicazione/Indirizzo", g("immobile.via"))
         metti(f"{base}/ubicazione/Ncivico", g("immobile.civico"))
