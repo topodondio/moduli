@@ -1,4 +1,4 @@
-"""Logica di Fascicolo: archivio pratiche, dati, mappature e compilazione PDF."""
+"""Logica di Modulo: archivio pratiche, dati, mappature e compilazione PDF."""
 import json
 import os
 import time
@@ -688,7 +688,7 @@ def compila(pratica, modulo, uscita, conserva=None):
 
 def in_uso(percorso):
     """True se il file è aperto in un altro programma (Windows: lo provo ad aprire in esclusiva).
-    Fascicolo non deve mai scrivere in un PDF aperto in Acrobat: dopo, Acrobat non riesce più a salvarlo."""
+    Modulo non deve mai scrivere in un PDF aperto in Acrobat: dopo, Acrobat non riesce più a salvarlo."""
     p = Path(percorso)
     if not p.exists() or not sys.platform.startswith("win"):
         return False

@@ -1,4 +1,5 @@
-; Programma di installazione di Fascicolo (NSIS).
+; Programma di installazione di Modulo (ex Fascicolo) (NSIS).
+; La chiave di registro e i nomi interni restano «Fascicolo» così gli aggiornamenti trovano le installazioni esistenti.
 ; Si crea con:  python installer/crea_installer.py   (funziona anche da Linux, non serve Windows)
 
 Unicode true
@@ -14,11 +15,11 @@ Unicode true
 !ifndef ICONA
   !define ICONA "..\assets\fascicolo.ico"
 !endif
-!define NOME "Fascicolo"
+!define NOME "Modulo"
 !define CHIAVE "Software\Microsoft\Windows\CurrentVersion\Uninstall\Fascicolo"
 
 Name "${NOME} ${VERSIONE}"
-OutFile "${USCITA}\Fascicolo-Setup-${VERSIONE}.exe"
+OutFile "${USCITA}\Modulo-Setup-${VERSIONE}.exe"
 InstallDir "$LOCALAPPDATA\Programs\${NOME}"
 ; se è già installato altrove, aggiorno quella cartella
 InstallDirRegKey HKCU "${CHIAVE}" "InstallLocation"
@@ -53,7 +54,7 @@ Function AvviaFascicolo
   Exec '"$INSTDIR\python\pythonw.exe" "$INSTDIR\Fascicolo.pyw"'
 FunctionEnd
 
-Section "Fascicolo" SecMain
+Section "Modulo" SecMain
   SetOutPath "$INSTDIR"
   ; via i file della versione precedente (le pratiche stanno nell'archivio, non qui)
   RMDir /r "$INSTDIR\python"
@@ -63,6 +64,9 @@ Section "Fascicolo" SecMain
   File /r "${ORIGINE}\*.*"
   WriteUninstaller "$INSTDIR\Disinstalla.exe"
 
+  ; il programma prima si chiamava «Fascicolo»: tolgo i vecchi collegamenti
+  Delete "$DESKTOP\Fascicolo.lnk"
+  RMDir /r "$SMPROGRAMS\Fascicolo"
   CreateDirectory "$SMPROGRAMS\${NOME}"
   CreateShortcut "$SMPROGRAMS\${NOME}\${NOME}.lnk" "$INSTDIR\python\pythonw.exe" '"$INSTDIR\Fascicolo.pyw"' "$INSTDIR\assets\fascicolo.ico"
   CreateShortcut "$SMPROGRAMS\${NOME}\Disinstalla ${NOME}.lnk" "$INSTDIR\Disinstalla.exe"

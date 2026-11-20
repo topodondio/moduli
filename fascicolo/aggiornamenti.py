@@ -32,7 +32,7 @@ def piu_nuova(remota, locale=__version__):
 def ultima_release(timeout=8):
     """Ritorna dict(versione, note, pagina, setup, nome_setup) oppure solleva un'eccezione."""
     req = urllib.request.Request(API, headers={"Accept": "application/vnd.github+json",
-                                               "User-Agent": f"Fascicolo/{__version__}"})
+                                               "User-Agent": f"Modulo/{__version__}"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         d = json.loads(r.read().decode("utf-8"))
     setup = next((a for a in d.get("assets", []) if a.get("name", "").lower().endswith(".exe")), None)
@@ -43,8 +43,8 @@ def ultima_release(timeout=8):
 
 def scarica(url, nome, avanzamento=None):
     """Scarica il setup nella cartella temporanea. avanzamento(letti, totale) facoltativo."""
-    dest = Path(tempfile.gettempdir()) / (nome or "Fascicolo-Setup.exe")
-    req = urllib.request.Request(url, headers={"User-Agent": f"Fascicolo/{__version__}"})
+    dest = Path(tempfile.gettempdir()) / (nome or "Modulo-Setup.exe")
+    req = urllib.request.Request(url, headers={"User-Agent": f"Modulo/{__version__}"})
     with urllib.request.urlopen(req, timeout=30) as r, open(dest, "wb") as f:
         tot = int(r.headers.get("Content-Length") or 0)
         letti = 0
@@ -60,7 +60,7 @@ def scarica(url, nome, avanzamento=None):
 
 
 def avvia_setup(setup):
-    """Prepara uno script che aspetta la chiusura VERA di Fascicolo (non un tempo fisso), poi lancia
+    """Prepara uno script che aspetta la chiusura VERA di Modulo (non un tempo fisso), poi lancia
     il setup silenzioso nella stessa cartella in cui è installato; il setup riapre il programma.
     Tutto viene annotato in %TEMP%\\fascicolo-aggiornamento.log."""
     tmp = Path(tempfile.gettempdir())
@@ -72,7 +72,7 @@ def avvia_setup(setup):
     righe = [
         "@echo off",
         "chcp 65001 >nul",
-        f'echo %date% %time% aggiornamento: attendo che Fascicolo (processo {pid}) si chiuda > "{log}"',
+        f'echo %date% %time% aggiornamento: attendo che Modulo (processo {pid}) si chiuda > "{log}"',
         "set n=0",
         ":attendi",
         f'tasklist /FI "PID eq {pid}" /NH 2>nul | find /I "python" >nul',

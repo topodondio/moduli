@@ -1,4 +1,4 @@
-"""Widget dei campi e tema grafico di Fascicolo."""
+"""Widget dei campi e tema grafico di Modulo."""
 from PySide6.QtCore import Qt, Signal, QDate
 from PySide6.QtWidgets import (QWidget, QLineEdit, QComboBox, QCheckBox, QPlainTextEdit, QTableWidget,
                                QTableWidgetItem, QHBoxLayout, QToolButton, QCalendarWidget, QMenu,

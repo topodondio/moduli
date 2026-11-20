@@ -1,21 +1,21 @@
-# Fascicolo – pratiche edilizie e modulistica
+# Modulo – pratiche edilizie e modulistica
 
 Programma desktop (Windows e Mac) per gestire le pratiche edilizie: scheda dati unica per
 pratica, compilazione automatica dei moduli PDF provinciali, archivio per pratica e consegna
 secondo le regole di ogni comune. Non usa il browser né internet.
 
 ## Installazione
-Scarica **Fascicolo-Setup-x.y.z.exe** dall'ultima release
+Scarica **Modulo-Setup-x.y.z.exe** dall'ultima release
 (https://github.com/topodondio/moduli/releases/latest) e aprilo: si installa per l'utente,
 senza permessi di amministratore, con collegamento nel menu Start (e, a scelta, sul desktop).
 Windows può mostrare l'avviso "PC protetto da Windows" perché il programma non è firmato:
 *Ulteriori informazioni › Esegui comunque*.
 
-**Aggiornamenti**: menu **? › Controlla aggiornamenti…**. Se c'è una versione nuova, Fascicolo
+**Aggiornamenti**: menu **? › Controlla aggiornamenti…**. Se c'è una versione nuova, Modulo
 la scarica, si chiude, si aggiorna e si riapre; le pratiche non vengono toccate. All'avvio il
 programma controlla da solo e lo segnala in basso nella barra di stato.
 
-**Più postazioni**: al primo avvio Fascicolo chiede dov'è l'archivio. Scegliendo su tutti i
+**Più postazioni**: al primo avvio Modulo chiede dov'è l'archivio. Scegliendo su tutti i
 computer la **stessa cartella condivisa sul server**, l'elenco delle pratiche è unico per tutto
 lo studio, con dati, moduli e allegati di ogni pratica. L'elenco e la pratica aperta si
 aggiornano da soli ogni pochi secondi; se due persone lavorano sulla stessa pratica le
@@ -27,7 +27,7 @@ la sta usando. Comuni, rubrica e moduli insegnati stanno nell'archivio e valgono
 Serve Windows 10 (1903 o successivo) o Windows 11.
 
 **Creare l'installer**: `python installer/crea_installer.py` crea
-`dist/Fascicolo-Setup-x.y.z.exe`. Funziona anche da Linux o Mac: scarica un Python per Windows
+`dist/Modulo-Setup-x.y.z.exe`. Funziona anche da Linux o Mac: scarica un Python per Windows
 già pronto, ci mette PySide6, PyMuPDF e il programma e crea l'installer con NSIS
 (`apt install nsis`; su Windows https://nsis.sourceforge.io).
 
@@ -43,10 +43,10 @@ Il programma ha tre schede.
 1. **Dati pratica**: i dati comuni (titolare, immobile, tecnici, impresa…). Si salvano da soli.
    Progettisti, imprese e titolari ricorrenti si salvano in **rubrica**.
 2. **Moduli**: premi **Compila un modulo**, scegli il modulo e si apre nel tuo programma PDF già
-   compilato con i dati della pratica. Completalo e salvalo: Fascicolo legge i dati nuovi e li
+   compilato con i dati della pratica. Completalo e salvalo: Modulo legge i dati nuovi e li
    usa per gli altri moduli. I moduli della pratica sono in un elenco numerato che puoi
    riordinare come vuoi tenendo premuto un modulo (sul numero o sul nome) e trascinandolo.
-   Quando compili un modulo nuovo Fascicolo chiede dove salvarlo (cartella e nome, anche sul
+   Quando compili un modulo nuovo Modulo chiede dove salvarlo (cartella e nome, anche sul
    server): da lì in poi il riferimento è quel file. Ogni riga mostra dove è salvato, con
    **Apri** e **Togli**; col tasto destro puoi aprire la cartella o spostarlo.
    Se nel frattempo hai cambiato i dati della pratica, all'apertura il modulo viene aggiornato
@@ -68,7 +68,7 @@ salvati in altre cartelle non vengono toccati). Le stesse voci sono nel menu del
 Quando premi **Compila un modulo** i moduli sono divisi in tre gruppi principali:
 - **Moduli 2026**: la modulistica provinciale nuova (PDF compilabili).
 - **Moduli 2022**: i moduli dinamici del portale (Adobe LiveCycle/XFA), cartella `moduli/2022`.
-  Fascicolo scrive i dati della pratica dentro il modulo e li rilegge quando lo salvi; vanno
+  Modulo scrive i dati della pratica dentro il modulo e li rilegge quando lo salvi; vanno
   aperti e completati con **Adobe Acrobat o Acrobat Reader** (gli altri lettori PDF mostrano
   solo "Please wait…"). Se ricompili un modulo 2022 già fatto, i campi compilati a mano restano.
 - **ISTAT / ISPAT**: i modelli statistici RE e NRE.

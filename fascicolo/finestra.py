@@ -1,4 +1,4 @@
-"""Finestra principale di Fascicolo."""
+"""Finestra principale di Modulo."""
 import os
 import re
 import shutil
@@ -339,7 +339,7 @@ class SchedaModuli(QWidget):
         h.addStretch()
         lay.addLayout(h)
         n = QLabel("Scegli dove salvare il modulo: si apre già compilato con i dati della pratica, completalo e salvalo. "
-                   "Fascicolo legge i dati nuovi e li usa per gli altri moduli.")
+                   "Modulo legge i dati nuovi e li usa per gli altri moduli.")
         n.setObjectName("nota")
         n.setWordWrap(True)
         lay.addWidget(n)
@@ -538,7 +538,7 @@ class SchedaModuli(QWidget):
             from . import xfa
             from . import __version__
             da_fare = (xfa.da_ricostruire(m.pdf, f)  # moduli 2022 che Reader non lasciava salvare
-                       # moduli 2022 compilati da una versione precedente: ora Fascicolo compila più campi
+                       # moduli 2022 compilati da una versione precedente: ora Modulo compila più campi
                        or (not info.get("importato") and info.get("versione") != __version__))
         if da_fare and core.in_uso(f):
             # è già aperto in Acrobat: non lo tocco (altrimenti Acrobat non riesce più a salvarlo)
@@ -764,7 +764,7 @@ class _ControlloAggiornamenti(QObject):
             return
         if "404" in msg:
             QMessageBox.information(self.f, "Aggiornamenti",
-                                    "Su GitHub non c'è ancora nessuna versione pubblicata di Fascicolo.")
+                                    "Su GitHub non c'è ancora nessuna versione pubblicata di Modulo.")
         else:
             QMessageBox.warning(self.f, "Aggiornamenti",
                                 f"Non riesco a controllare gli aggiornamenti (manca la connessione?):\n{msg}")
@@ -772,13 +772,13 @@ class _ControlloAggiornamenti(QObject):
     def _trovato(self, rel, silenzioso):
         if not aggiornamenti.piu_nuova(rel["versione"]):
             if not silenzioso:
-                QMessageBox.information(self.f, "Aggiornamenti", f"Fascicolo {__version__} è già la versione più recente.")
+                QMessageBox.information(self.f, "Aggiornamenti", f"Modulo {__version__} è già la versione più recente.")
             return
         if silenzioso:
-            self.f.stato(f"È disponibile Fascicolo {rel['versione']}: menu ? › Controlla aggiornamenti")
+            self.f.stato(f"È disponibile Modulo {rel['versione']}: menu ? › Controlla aggiornamenti")
             return
         note = rel["note"].strip()
-        testo = (f"È disponibile <b>Fascicolo {rel['versione']}</b> (hai la {__version__}).<br><br>"
+        testo = (f"È disponibile <b>Modulo {rel['versione']}</b> (hai la {__version__}).<br><br>"
                  + (note.replace("\n", "<br>")[:1500] + "<br><br>" if note else ""))
         if not aggiornamenti.installato() or not rel["setup"]:
             testo += "Scarica il nuovo programma di installazione dalla pagina del progetto."
@@ -786,7 +786,7 @@ class _ControlloAggiornamenti(QObject):
                 QDesktopServices.openUrl(QUrl(rel["pagina"]))
             return
         if QMessageBox.question(self.f, "Aggiornamento disponibile",
-                                testo + "Vuoi aggiornare adesso? Fascicolo si chiude, si aggiorna e si riapre "
+                                testo + "Vuoi aggiornare adesso? Modulo si chiude, si aggiorna e si riapre "
                                         "(le pratiche non vengono toccate).") != QMessageBox.Yes:
             return
         from PySide6.QtWidgets import QProgressDialog
@@ -834,7 +834,7 @@ class Finestra(QMainWindow):
             core.salva_config(self.cfg)
         self.archivio = core.Archivio(self.cfg["archivio"])
         self.pratica = None
-        self.setWindowTitle(f"Fascicolo {__version__} – pratiche edilizie")
+        self.setWindowTitle(f"Modulo {__version__} – pratiche edilizie")
         icona = core.APP_DIR / "assets" / "fascicolo.png"
         if icona.exists():
             self.setWindowIcon(QIcon(str(icona)))
@@ -853,7 +853,7 @@ class Finestra(QMainWindow):
         barra.setFixedWidth(280)
         bl = QVBoxLayout(barra)
         bl.setContentsMargins(14, 16, 14, 14)
-        t = QLabel("Fascicolo")
+        t = QLabel("Modulo")
         t.setObjectName("titoloApp")
         bl.addWidget(t)
         st = QLabel("Pratiche edilizie e modulistica")
@@ -1110,7 +1110,7 @@ class Finestra(QMainWindow):
             voci.append("Nessuno: copialo negli Allegati")
             scelta, ok = QInputDialog.getItem(
                 self, "Modulo non riconosciuto",
-                f"«{pdf.name}» ha {n_campi} campi ma non coincide con nessun modello di Fascicolo\n"
+                f"«{pdf.name}» ha {n_campi} campi ma non coincide con nessun modello conosciuto\n"
                 "(forse è una versione diversa del modulo). A quale modulo corrisponde?\n"
                 "Leggerò i campi che hanno lo stesso nome.", voci, 0, False)
             if not ok:
@@ -1427,12 +1427,12 @@ class Finestra(QMainWindow):
         a.triggered.connect(lambda: self._agg.avvia(silenzioso=False))
         m.addAction(a)
         m.addSeparator()
-        a = QAction("Informazioni su Fascicolo", self)
+        a = QAction("Informazioni su Modulo", self)
         a.triggered.connect(self._informazioni)
         m.addAction(a)
 
     def _informazioni(self):
-        QMessageBox.about(self, "Informazioni su Fascicolo",
-                          f"<b>Fascicolo {__version__}</b><br>Pratiche edilizie e modulistica.<br><br>"
+        QMessageBox.about(self, "Informazioni su Modulo",
+                          f"<b>Modulo {__version__}</b><br>Pratiche edilizie e modulistica.<br><br>"
                           f"Archivio: {self.archivio.radice}<br>Postazione: {core.utente()}<br><br>"
                           f"<a href='{aggiornamenti.PAGINA}'>{aggiornamenti.PAGINA}</a>")

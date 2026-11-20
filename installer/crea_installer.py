@@ -1,4 +1,4 @@
-"""Crea dist/Fascicolo-Setup-<versione>.exe, l'installer per Windows.
+"""Crea dist/Modulo-Setup-<versione>.exe, l'installer per Windows.
 
 Funziona da Linux, macOS o Windows: scarica un Python per Windows già pronto
 (python-build-standalone), ci mette dentro PySide6 e PyMuPDF per Windows (da PyPI) e il
@@ -104,7 +104,7 @@ def programma():
         shutil.copytree(RADICE / d, APP / d, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     for f in ["Fascicolo.pyw", "README.md", "requirements.txt"]:
         shutil.copy2(RADICE / f, APP / f)
-    (APP / "installato.txt").write_text("Fascicolo installato con il programma di installazione.\n", encoding="utf-8")
+    (APP / "installato.txt").write_text("Modulo installato con il programma di installazione.\n", encoding="utf-8")
 
 
 def main():
@@ -119,7 +119,7 @@ def main():
     subprocess.check_call([makensis, "-V2", f"-DVERSIONE={v}", f"-DORIGINE={APP}",
                            f"-DUSCITA={RADICE / 'dist'}", f"-DICONA={RADICE / 'assets' / 'fascicolo.ico'}",
                            str(RADICE / "installer" / "Fascicolo.nsi")])
-    out = RADICE / "dist" / f"Fascicolo-Setup-{v}.exe"
+    out = RADICE / "dist" / f"Modulo-Setup-{v}.exe"
     print(f"\nPronto: {out}  ({out.stat().st_size / 1e6:.0f} MB)")
 
 

@@ -4,7 +4,7 @@ import sys
 if sys.platform.startswith("win"):
     # niente modalità scura automatica di Windows: l'interfaccia ha i suoi colori
     os.environ.setdefault("QT_QPA_PLATFORM", "windows:darkmode=0")
-    try:  # icona di Fascicolo (e non di Python) nella barra delle applicazioni
+    try:  # icona di Modulo (e non di Python) nella barra delle applicazioni
         import ctypes
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("topodondio.Fascicolo")
     except Exception:
@@ -47,7 +47,7 @@ def tavolozza_chiara():
 
 def main():
     app = QApplication(sys.argv)
-    app.setApplicationName("Fascicolo")
+    app.setApplicationName("Modulo")
     app.setStyle("Fusion")
     from PySide6.QtGui import QIcon
     from .core import APP_DIR

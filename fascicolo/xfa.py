@@ -689,7 +689,7 @@ def ha_diritti(pdf):
 
 def da_ricostruire(modello, compilato):
     """Il modulo compilato ha perso i diritti di salvataggio che il modello originale ha
-    (moduli fatti con Fascicolo 0.7.0–0.7.3): va rifatto dal modello conservando i dati."""
+    (moduli fatti con Modulo 0.7.0–0.7.3): va rifatto dal modello conservando i dati."""
     from pathlib import Path
     return Path(compilato).exists() and ha_diritti(modello) and not ha_diritti(compilato)
 
