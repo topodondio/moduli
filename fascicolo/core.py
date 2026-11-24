@@ -717,7 +717,27 @@ def _archivia_precedente(pratica, modulo, out):
         shutil.copy2(out, old / f"{modulo.id}_{datetime.now():%Y%m%d-%H%M%S}.pdf")
 
 
+def _registra(pratica, riga):
+    """Registro delle compilazioni nella cartella della pratica (serve a capire i casi strani)."""
+    try:
+        with open(pratica.cartella / ".registro.txt", "a", encoding="utf-8") as fh:
+            fh.write(f"{datetime.now():%d/%m/%Y %H:%M:%S}  {utente()}  {riga}\n")
+    except OSError:
+        pass
+
+
 def genera(pratica, modulo, destinazione=None):
+    try:
+        out, res = _genera(pratica, modulo, destinazione)
+    except Exception as e:
+        _registra(pratica, f"ERRORE {modulo.id}: {e}")
+        raise
+    pieni = sum(1 for v in pratica.dati.get("_valori", {}).values() if v not in ("", None, False, [], {}))
+    _registra(pratica, f"{modulo.id} -> {out}  campi scritti {res[0]}/{res[1]}  dati nella pratica {pieni}")
+    return out, res
+
+
+def _genera(pratica, modulo, destinazione=None):
     """Compila il modulo. Se esiste già una versione compilata, i campi che il programma
     non gestisce (scelte tecniche, spunte fatte a mano nel PDF…) vengono conservati.
     `destinazione`: file scelto dall'utente per un modulo nuovo (cartella e nome)."""

@@ -505,6 +505,10 @@ class SchedaModuli(QWidget):
         m = self.f._modulo_per_id(mod_id)
         if m is None:
             return
+        # prima porto dentro i dati appena salvati negli altri PDF (altrimenti il nuovo modulo non li avrebbe)
+        self.f.scheda_dati.salva_subito()
+        self.f.controlla_pdf_modificati()
+        self.pratica.sincronizza(forza=True)
         cart = Path(self.pratica.dati.get("_ultima_cartella") or self.pratica.cartella_moduli)
         if not cart.exists():
             cart = self.pratica.cartella if self.pratica.cartella.exists() else Path.home()
@@ -513,14 +517,20 @@ class SchedaModuli(QWidget):
         if not dest:
             return
         try:
-            f, _res = core.genera(self.pratica, m, destinazione=dest)
+            f, res = core.genera(self.pratica, m, destinazione=dest)
         except Exception as e:  # noqa
             QMessageBox.critical(self, "Compila", f"Non riesco a creare il modulo:\n{e}")
             return
         self.f._sorveglia()
         self.carica(self.pratica)
+        g = self.pratica.get
+        if m.tipo != "statico" and not any(g(k) for k in ("titolare.cognome", "societa.denominazione",
+                                                          "immobile.via", "progettista.cognome")):
+            QMessageBox.warning(self, "Compila", f"«{m.titolo}» è stato creato ma <b>vuoto</b>: nella pratica non ci "
+                                                  "sono ancora dati per questo modulo.<br><br>Compila la scheda "
+                                                  "<b>Dati pratica</b> e poi premi <b>Apri</b> sul modulo: si aggiorna.")
         core.apri_con_sistema(f)
-        self.f.stato(f"Salvato in {f.parent}: quando lo modifichi e lo salvi, leggo i dati nuovi")
+        self.f.stato(f"Salvato in {f.parent} – {res[0]} campi compilati. Quando lo salvi, leggo i dati nuovi")
 
     def apri(self, mod_id):
         """Apre il modulo nel programma PDF; se non c'è ancora, o se i dati della pratica sono cambiati,
@@ -542,7 +552,10 @@ class SchedaModuli(QWidget):
                        or (not info.get("importato") and info.get("versione") != __version__))
         if da_fare and core.in_uso(f):
             # è già aperto in Acrobat: non lo tocco (altrimenti Acrobat non riesce più a salvarlo)
-            self.f.stato(f"«{f.name}» è già aperto: lo aggiorno quando lo chiudi")
+            QMessageBox.information(self, "Modulo aperto",
+                                    f"«{f.name}» è già aperto in Acrobat e i dati della pratica sono cambiati.<br><br>"
+                                    "Per aggiornarlo <b>salvalo e chiudilo</b> in Acrobat, poi premi di nuovo "
+                                    "<b>Apri</b>.")
             core.apri_con_sistema(f)
             return
         if da_fare:
@@ -552,7 +565,8 @@ class SchedaModuli(QWidget):
                 if not f.exists():
                     QMessageBox.critical(self, "Compila", f"Non riesco a creare il modulo:\n{e}")
                     return
-                self.f.stato(f"Non ho potuto aggiornare il PDF (è aperto?): lo apro com'è")
+                QMessageBox.warning(self, "Apri", f"Non sono riuscito ad aggiornare il modulo con i dati della "
+                                                  f"pratica, lo apro com'è:\n{e}")
             self.f._sorveglia()
             self.carica(self.pratica)
         if not f.exists():
