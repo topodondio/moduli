@@ -89,8 +89,52 @@ def _via(ind, tipo=""):
     return "", ind
 
 
+_XD = "{http://www.xfa.org/schema/xfa-data/1.0/}"
+_DDA = "{http://ns.adobe.com/data-description/}"
+
+
+def _dichiarazione(radice):
+    """I dati veri stanno in <xfa:data>; <dd:dataDescription> è solo la descrizione della struttura
+    (nei moduli vuoti contiene lo schema, non i valori). Leggo da xfa:data e, solo se lì non c'è
+    nulla, ripiego sulla descrizione (moduli compilati dalle versioni 0.7.x di Modulo)."""
+    data = radice.find(_XD + "data")
+    if data is not None:
+        d = data.find(".//" + NS + "dichiarazione")
+        if d is not None:
+            return d
+    return radice.find(".//" + NS + "dichiarazione")
+
+
+def _dichiarazione_da_scrivere(radice):
+    """Ritorna l'elemento <dichiarazione> dentro <xfa:data>, creandolo se manca: copio la struttura
+    dalla descrizione dei dati (con eventuali valori scritti dalle versioni 0.7.x, che finivano lì)."""
+    import copy
+    data = radice.find(_XD + "data")
+    if data is None:
+        data = ET.SubElement(radice, _XD + "data")
+    d = data.find(".//" + NS + "dichiarazione")
+    if d is not None:
+        return d
+    modello = None
+    desc = radice.find(_DDA + "dataDescription")
+    if desc is not None:
+        modello = desc.find(NS + "dichiarazioni")
+    if modello is not None:
+        radice_dati = copy.deepcopy(modello)
+        for el in radice_dati.iter():
+            for a in [a for a in el.attrib if a.startswith(_DDA)]:
+                del el.attrib[a]
+        data.append(radice_dati)
+    else:
+        radice_dati = ET.SubElement(data, NS + "dichiarazioni")
+    d = radice_dati.find(NS + "dichiarazione")
+    if d is None:
+        d = ET.SubElement(radice_dati, NS + "dichiarazione")
+    return d
+
+
 def tipo_documento(radice):
-    d = radice.find(".//" + NS + "dichiarazione")
+    d = _dichiarazione(radice)
     if d is None:
         return None, None
     for sez, (titolo, titolo_pratica) in TIPI.items():
@@ -108,7 +152,7 @@ def estrai(pdf):
         radice = ET.fromstring(xml)
     except ET.ParseError:
         return None, {}
-    d = radice.find(".//" + NS + "dichiarazione")
+    d = _dichiarazione(radice)
     if d is None:
         return None, {}
     titolo, titolo_pratica = tipo_documento(radice)
@@ -717,7 +761,7 @@ def scrivi(modello, uscita, pratica):
         for pref, uri in (("xfa", NS_XFA), ("dd", NS_DD), ("", NS_SYG)):
             ET.register_namespace(pref, uri)
         radice = ET.fromstring(vecchi if vecchi else doc.xref_stream(p["datasets"]))
-        dich = radice.find(".//" + NS + "dichiarazione")
+        dich = _dichiarazione_da_scrivere(radice)
         if dich is None:
             raise ValueError("struttura dati del modulo non riconosciuta")
         for path, val in valori.items():
